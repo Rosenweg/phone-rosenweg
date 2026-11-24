@@ -29,7 +29,7 @@
 
     <queries>
         <package android:name="org.fossify.contacts.debug" />
-        <package android:name="org.fossify.contacts" />
+        <package android:name="ch.rosenweg4303.contacts" />
 
         <!-- Required for loading contact accounts -->
         <intent>

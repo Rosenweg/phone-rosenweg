@@ -70,7 +70,14 @@ fun getCallContact(context: Context, call: Call?, callback: (CallContact) -> Uni
                         }
                     }
                 } else {
-                    callContact.name = callContact.number
+                    // Rosenweg: nicht im Adressbuch -> den Namen nehmen, den die
+                    // Telefonanlage mitschickt (CNAP / SIP-Anzeigename), sonst die Nummer.
+                    val cnap = try {
+                        call?.details?.callerDisplayName?.trim()
+                    } catch (e: Exception) {
+                        null
+                    }
+                    callContact.name = if (!cnap.isNullOrEmpty() && cnap != number) cnap else callContact.number
                 }
 
                 callback(callContact)

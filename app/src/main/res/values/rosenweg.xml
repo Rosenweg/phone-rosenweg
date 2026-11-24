@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Rosenweg: Icon-Hintergrund Rot statt Fossify-Gruen. Eigene Farbe, damit
+     die App-Farben (color_primary) unveraendert bleiben. -->
+<resources>
+    <color name="rosenweg_icon_background">#D32F2F</color>
+</resources>
