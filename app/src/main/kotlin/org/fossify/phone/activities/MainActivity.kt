@@ -40,6 +40,7 @@ import org.fossify.phone.fragments.ContactsFragment
 import org.fossify.phone.fragments.FavoritesFragment
 import org.fossify.phone.fragments.MyViewPagerFragment
 import org.fossify.phone.fragments.RecentsFragment
+import org.fossify.phone.helpers.AnlageEinstellungen
 import org.fossify.phone.helpers.OPEN_DIAL_PAD_AT_LAUNCH
 import org.fossify.phone.helpers.RecentsHelper
 import org.fossify.phone.helpers.tabsList
@@ -63,6 +64,8 @@ class MainActivity : SimpleActivity() {
         super.onCreate(savedInstanceState)
         setContentView(binding.root)
         appLaunched(BuildConfig.APPLICATION_ID)
+        // Rosenweg (Regel 7): Einstellungen der angemeldeten Person von der Anlage
+        AnlageEinstellungen.abgleichen(this) { recreate() }
         setupOptionsMenu()
         refreshMenuItems()
         setupEdgeToEdge(padBottomImeAndSystem = listOf(binding.mainTabsHolder))
