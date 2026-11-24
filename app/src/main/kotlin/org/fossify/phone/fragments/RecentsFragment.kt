@@ -165,7 +165,12 @@ class RecentsFragment(
                     },
                     itemClick = {
                         val recentCall = it as RecentCall
-                        activity?.startCallWithConfirmationCheck(recentCall.phoneNumber, recentCall.name)
+                        if (recentCall.type == android.provider.CallLog.Calls.VOICEMAIL_TYPE && recentCall.anlageId > 0) {
+                            // Rosenweg: persoenliche Voicemail aus der Anlage anhoeren
+                            org.fossify.phone.dialogs.VoicemailDialog(activity as SimpleActivity, recentCall)
+                        } else {
+                            activity?.startCallWithConfirmationCheck(recentCall.phoneNumber, recentCall.name)
+                        }
                     },
                     profileIconClick = {
                         val recentCall = it as RecentCall

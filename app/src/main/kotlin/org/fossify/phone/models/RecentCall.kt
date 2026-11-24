@@ -23,6 +23,10 @@ data class RecentCall(
     val specificType: String,
     val isUnknownNumber: Boolean,
     val groupedCalls: MutableList<RecentCall>? = null,
+    /** Rosenweg: Eintrag aus der Telefonanlage (Call-ID dort), 0 = Android-Anrufprotokoll. */
+    val anlageId: Int = 0,
+    /** Rosenweg: Zusammenfassung einer Voicemail (falls vorhanden). */
+    val voicemailText: String = "",
 ) : CallLogItem() {
     val dayCode = startTS.getDayCode()
 

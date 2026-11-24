@@ -66,11 +66,12 @@ class RecentsHelper(private val context: Context) {
                     getRecents(contacts)
                 }
 
-                callback(
-                    recentCalls
-                        .sortedByDescending { it.startTS }
-                        .distinctBy { it.id }
+                // Rosenweg: Anrufe der Person aus der Anlage dazu (ueber alle Geraete)
+                val mitAnlage = AnlageVerlauf.zusammenfuehren(
+                    recentCalls.sortedByDescending { it.startTS }.distinctBy { it.id },
+                    AnlageVerlauf.laden(context, contacts)
                 )
+                callback(mitAnlage.distinctBy { it.id })
             }
         }
     }
