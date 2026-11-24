@@ -40,6 +40,14 @@
         android:title="@string/settings"
         app:showAsAction="never" />
     <item
+        android:id="@+id/rosenweg_sip_konto"
+        android:title="@string/rosenweg_sip_konto"
+        app:showAsAction="never" />
+    <item
+        android:id="@+id/rosenweg_sipdroid_info"
+        android:title="@string/rosenweg_sipdroid_info"
+        app:showAsAction="never" />
+    <item
         android:id="@+id/about"
         android:icon="@drawable/ic_info_vector"
         android:title="@string/about"

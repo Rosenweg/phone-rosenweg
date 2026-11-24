@@ -139,6 +139,8 @@ detekt {
 
 dependencies {
     implementation(libs.fossify.commons)
+    // Rosenweg: Sipdroid-Kern (GPLv3 + ADDITIONAL_TERMS, siehe sipdroid/ADDITIONAL_TERMS.txt)
+    implementation(project(":sipdroid"))
     implementation(libs.indicator.fast.scroll)
     implementation(libs.autofit.text.view)
     implementation(libs.kotlinx.serialization.json)

@@ -41,6 +41,7 @@ import org.fossify.phone.fragments.FavoritesFragment
 import org.fossify.phone.fragments.MyViewPagerFragment
 import org.fossify.phone.fragments.RecentsFragment
 import org.fossify.phone.helpers.AnlageEinstellungen
+import org.fossify.phone.helpers.PersoenlichesKonto
 import org.fossify.phone.helpers.OPEN_DIAL_PAD_AT_LAUNCH
 import org.fossify.phone.helpers.RecentsHelper
 import org.fossify.phone.helpers.tabsList
@@ -206,6 +207,8 @@ class MainActivity : SimpleActivity() {
             findItem(R.id.change_view_type).isVisible = currentFragment == getFavoritesFragment()
             findItem(R.id.column_count).isVisible = currentFragment == getFavoritesFragment() && config.viewType == VIEW_TYPE_GRID
             findItem(R.id.more_apps_from_us).isVisible = resources.getBoolean(R.bool.is_google_play_build)
+            // Rosenweg: Zugangsdaten von Hand nur auf privaten Telefonen (ohne Rosenweg Geraet)
+            findItem(R.id.rosenweg_sip_konto).isVisible = !PersoenlichesKonto.geraetDa(this@MainActivity)
         }
     }
 
@@ -236,6 +239,8 @@ class MainActivity : SimpleActivity() {
                     R.id.change_view_type -> changeViewType()
                     R.id.column_count -> changeColumnCount()
                     R.id.about -> launchAbout()
+                    R.id.rosenweg_sipdroid_info -> sipdroidInfo()
+                    R.id.rosenweg_sip_konto -> startActivity(Intent(this@MainActivity, org.sipdroid.sipua.ui.Settings::class.java))
                     else -> return@setOnMenuItemClickListener false
                 }
                 return@setOnMenuItemClickListener true
@@ -561,6 +566,25 @@ class MainActivity : SimpleActivity() {
         hideKeyboard()
         startActivity(Intent(applicationContext, SettingsActivity::class.java))
     }
+
+    /**
+     * Rosenweg: Hinweise des Sipdroid-Kerns (ADDITIONAL_TERMS.txt, Punkt 1: aus dem Menue der
+     * Hauptansicht erreichbar, Text unveraendert, Ergaenzungen nur am Ende).
+     */
+    private fun sipdroidInfo() {
+        val text = getString(org.sipdroid.sipua.R.string.sipdroid_about).replace("\\n", "\n") + SIPDROID_ROSENWEG
+        androidx.appcompat.app.AlertDialog.Builder(this)
+            .setTitle(R.string.rosenweg_sipdroid_info)
+            .setMessage(text)
+            .setPositiveButton(android.R.string.ok, null)
+            .show()
+    }
+
+    private val SIPDROID_ROSENWEG = "\n\n────────────\n" +
+        "Rosenweg Telefon\n" +
+        "Telefoniert mit dem SIP-Kern von Android SIP / Sipdroid (Kopie aus Rosenweg Gerät) " +
+        "über das persönliche Konto der angemeldeten Person an der Rosenweg-Anlage.\n" +
+        "Quellcode: github.com/Rosenweg · Übersicht: rosenweg4303.ch/apps.html"
 
     private fun launchAbout() {
         val licenses = LICENSE_GLIDE or LICENSE_INDICATOR_FAST_SCROLL or LICENSE_AUTOFITTEXTVIEW

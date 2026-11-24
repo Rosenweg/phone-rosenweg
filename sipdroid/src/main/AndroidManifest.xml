@@ -1,0 +1,69 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+ * Copyright (C) 2009 The Sipdroid Open Source Project
+ *
+ * This file is part of Sipdroid (http://www.sipdroid.org)
+ *
+ * Sipdroid is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * for modifying the main definitions additional terms according to section 7, GPL apply,
+ * see ADDITIONAL_TERMS.txt
+ *
+ * Rosenweg Telefon (25.11.2026): SIP-Kern fuer das persoenliche Konto. Die Nebenstelle
+ * des Geraets registriert weiter Rosenweg Geraet (ch.rosenweg4303.telefon).
+ -->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <uses-feature android:name="android.hardware.bluetooth" android:required="false" />
+    <uses-feature android:name="android.hardware.wifi" android:required="false" />
+
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.RECORD_AUDIO" />
+    <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MICROPHONE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_PHONE_CALL" />
+    <uses-permission android:name="android.permission.READ_PHONE_STATE" />
+    <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <uses-permission android:name="android.permission.WAKE_LOCK" />
+    <uses-permission android:name="android.permission.VIBRATE" />
+    <uses-permission android:name="android.permission.BLUETOOTH" android:maxSdkVersion="30" />
+    <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
+    <uses-permission android:name="android.permission.MANAGE_OWN_CALLS" />
+    <uses-permission android:name="android.permission.CALL_PHONE" />
+    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
+    <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
+
+    <application>
+        <!-- Manuelle SIP-Einstellungen (privates Telefon ohne Rosenweg Geraet) -->
+        <activity android:name="org.sipdroid.sipua.ui.Settings"
+            android:label="@string/sipdroid_app_name"
+            android:theme="@style/MyHoloTheme"
+            android:configChanges="orientation|keyboardHidden"
+            android:exported="false" />
+        <activity android:name="org.sipdroid.codecs.Codecs$CodecSettings"
+            android:label="@string/sipdroid_app_name"
+            android:theme="@style/MyHoloTheme"
+            android:exported="false" />
+
+        <receiver android:name="org.sipdroid.sipua.ui.OneShotAlarm" android:exported="false" />
+        <receiver android:name="org.sipdroid.sipua.ui.OneShotAlarm2" android:exported="false" />
+        <receiver android:name="org.sipdroid.sipua.ui.LoopAlarm" android:exported="false" />
+
+        <service android:name="org.sipdroid.sipua.ui.RegisterService"
+            android:exported="false"
+            android:foregroundServiceType="microphone|phoneCall" />
+
+        <service android:name="org.sipdroid.sipua.ui.SipConnectionService"
+            android:permission="android.permission.BIND_TELECOM_CONNECTION_SERVICE"
+            android:foregroundServiceType="microphone|phoneCall"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.telecom.ConnectionService" />
+            </intent-filter>
+        </service>
+    </application>
+</manifest>

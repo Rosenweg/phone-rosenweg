@@ -22,6 +22,7 @@ import org.fossify.phone.BuildConfig
 import org.fossify.phone.activities.DialerActivity
 import org.fossify.phone.activities.SimpleActivity
 import org.fossify.phone.dialogs.SelectSIMDialog
+import org.fossify.phone.helpers.PersoenlichesKonto
 
 fun SimpleActivity.startCallIntent(
     recipient: String,
@@ -115,6 +116,11 @@ fun SimpleActivity.getHandleToUse(
                 config.getCustomSIM(phoneNumber) != null -> {
                     callback(config.getCustomSIM(phoneNumber))
                 }
+
+                // Rosenweg: persoenliches Konto der angemeldeten Person, wenn registriert
+                // (nie fuer Notrufe — die gehen ueber das Modem)
+                PersoenlichesKonto.fuerAnruf(this, phoneNumber) != null ->
+                    callback(PersoenlichesKonto.fuerAnruf(this, phoneNumber))
 
                 defaultHandle != null -> callback(defaultHandle)
                 else -> showSelectSimDialog(phoneNumber, callback)
