@@ -68,7 +68,7 @@
     <string name="import_call_history">匯入通話紀錄</string>
     <string name="faq_1_title">我聽到來電鈴聲，但螢幕沒有亮起，該怎麼辦？</string>
     <string name="faq_1_text">這類問題可能與個別裝置及系統設定有關，難以一概而論。建議您檢查裝置設定，確保已允許此應用程式在背景彈出視窗，並授予「顯示在其他應用程式上層」的權限。</string>
-    <string name="app_launcher_name">電話</string>
+    <string name="app_launcher_name">Rosenweg 電話</string>
     <string name="faq_3_title">為什麼有部分聯絡人沒有顯示在應用程式中？</string>
     <string name="faq_3_text">Fossify 電話只會顯示設有電話號碼的聯絡人；未儲存電話號碼的聯絡人不會顯示在應用程式中。</string>
     <string name="faq_2_text">由於系統限制，緊急電話只能透過系統內建的預設電話應用程式撥打。為確保緊急通話正常運作，請保持系統內建的電話應用程式處於已安裝及啟用狀態。</string>
