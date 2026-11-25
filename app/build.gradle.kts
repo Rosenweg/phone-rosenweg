@@ -139,7 +139,7 @@ detekt {
 
 dependencies {
     // Rosenweg Updater (ohne Geraet: alle Rosenweg-Apps aus dem Katalog der Anlage aktualisieren)
-    implementation("ch.rosenweg4303:updater:0.1.1")
+    implementation("ch.rosenweg4303:updater:0.1.2")
     implementation(libs.fossify.commons)
     // Rosenweg: Sipdroid-Kern (GPLv3 + ADDITIONAL_TERMS, siehe sipdroid/ADDITIONAL_TERMS.txt)
     implementation(project(":sipdroid"))
