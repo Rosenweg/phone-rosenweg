@@ -493,13 +493,21 @@ import org.zoolu.sip.provider.SipProvider;
 					}
 					Notification notification = new NotificationCompat.Builder(mContext, "call_service")
 							.setSmallIcon(mContext.getApplicationInfo().icon)
-							.setContentTitle("Android SIP")
-							.setContentText("Call in progress")
+							.setContentTitle("Rosenweg Telefon")
+							.setContentText("Anruf")
 							.setPriority(NotificationCompat.PRIORITY_LOW)
 							.build();
 					if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-						sContext.startForeground(CALL_NOTIFICATION, notification, 
-								ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE | ServiceInfo.FOREGROUND_SERVICE_TYPE_PHONE_CALL);
+						try {
+							sContext.startForeground(CALL_NOTIFICATION, notification,
+									ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE | ServiceInfo.FOREGROUND_SERVICE_TYPE_PHONE_CALL);
+						} catch (SecurityException e) {
+							// Rosenweg: Android 14+ verbietet "Mikrofon" aus dem Hintergrund (eingehender
+							// Anruf bei gesperrtem Handy) - zuerst nur als Anruf, nach dem Annehmen
+							// (App im Vordergrund) startet der naechste Aufruf mit Mikrofon.
+							sContext.startForeground(CALL_NOTIFICATION, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_PHONE_CALL);
+							Log.i("SipUA", "startCallForeground nur als Anruf (Mikrofon erst nach dem Annehmen)");
+						}
 					} else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
 						sContext.startForeground(CALL_NOTIFICATION, notification, 
 								ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE);

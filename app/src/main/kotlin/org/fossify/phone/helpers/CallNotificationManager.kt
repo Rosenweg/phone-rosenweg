@@ -33,6 +33,7 @@ class CallNotificationManager(private val context: Context) {
             val callContactAvatar = callContactAvatarHelper.getCallContactAvatar(callContact)
             val callState = CallManager.getState()
             val isHighPriority = callState == Call.STATE_RINGING && !lowPriority
+            android.util.Log.i("RosenwegAnruf", "Benachrichtigung state=$callState hoch=$isHighPriority")
             val channelId =
                 if (isHighPriority) "simple_dialer_call_high_priority" else "simple_dialer_call"
             createNotificationChannel(isHighPriority, channelId)

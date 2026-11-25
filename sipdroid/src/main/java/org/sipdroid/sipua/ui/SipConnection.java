@@ -46,6 +46,8 @@ public class SipConnection extends Connection {
         if (Receiver.mContext != null) {
             Receiver.engine(Receiver.mContext).answercall();
         }
+        // Rosenweg: jetzt (App im Vordergrund) den Anrufdienst mit Mikrofon-Typ starten
+        Receiver.startCallForeground();
         setActive();
     }
 
