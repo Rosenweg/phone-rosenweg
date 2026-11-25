@@ -119,6 +119,7 @@ class MainActivity : SimpleActivity() {
         }
 
         updateMenuColors()
+        refreshMenuItems()   // Rosenweg: "Mit Rosenweg anmelden" / "Abmelden" nach dem Ruecksprung
         val properPrimaryColor = getProperPrimaryColor()
         val dialpadIcon = resources.getColoredDrawableWithColor(R.drawable.ic_dialpad_vector, properPrimaryColor.getContrastColor())
         binding.mainDialpadButton.setImageDrawable(dialpadIcon)
@@ -209,6 +210,11 @@ class MainActivity : SimpleActivity() {
             findItem(R.id.more_apps_from_us).isVisible = resources.getBoolean(R.bool.is_google_play_build)
             // Rosenweg: Zugangsdaten von Hand nur auf privaten Telefonen (ohne Rosenweg Geraet)
             findItem(R.id.rosenweg_sip_konto).isVisible = !PersoenlichesKonto.geraetDa(this@MainActivity)
+            findItem(R.id.rosenweg_anmelden).apply {
+                isVisible = !PersoenlichesKonto.geraetDa(this@MainActivity)
+                title = PersoenlichesKonto.privatNummer(this@MainActivity)
+                    ?.let { "Abmelden (Rosenweg $it)" } ?: getString(R.string.rosenweg_anmelden)
+            }
         }
     }
 
@@ -240,11 +246,30 @@ class MainActivity : SimpleActivity() {
                     R.id.column_count -> changeColumnCount()
                     R.id.about -> launchAbout()
                     R.id.rosenweg_sipdroid_info -> sipdroidInfo()
+                    R.id.rosenweg_anmelden -> rosenwegAnmelden()
                     R.id.rosenweg_sip_konto -> startActivity(Intent(this@MainActivity, org.sipdroid.sipua.ui.Settings::class.java))
                     else -> return@setOnMenuItemClickListener false
                 }
                 return@setOnMenuItemClickListener true
             }
+        }
+    }
+
+    private fun rosenwegAnmelden() {
+        val nummer = org.fossify.phone.helpers.PersoenlichesKonto.privatNummer(this)
+        if (nummer == null) {
+            org.fossify.phone.helpers.RosenwegAnmeldung.starten(this)
+            return
+        }
+        org.fossify.commons.dialogs.ConfirmationDialog(this, message = "Rosenweg Telefon abmelden? Deine Nummer $nummer klingelt dann nicht mehr auf diesem Handy.") {
+            val app = applicationContext
+            Thread {
+                org.fossify.phone.helpers.RosenwegAnmeldung.abmelden(app)
+                runOnUiThread {
+                    toast("Abgemeldet")
+                    refreshMenuItems()
+                }
+            }.start()
         }
     }
 

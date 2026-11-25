@@ -28,8 +28,8 @@ import java.util.concurrent.Executors
  * Zugang (niemand angemeldet, alte Geraete-App, keine persoenliche Nummer), wird nicht
  * registriert.
  *
- * Privates Telefon (keine Geraete-App): Server, Benutzer und Passwort von Hand in den
- * Sipdroid-Einstellungen (Menue "SIP-Konto").
+ * Privates Telefon (keine Geraete-App): "Mit Rosenweg anmelden" (RosenwegAnmeldung, fester
+ * Zugang <nummer>-p<id>) oder Server, Benutzer und Passwort von Hand (Menue "SIP-Konto").
  *
  * Nie den Zugang loggen.
  */
@@ -41,6 +41,9 @@ object PersoenlichesKonto {
 
     /** true: der Zugang in den Sipdroid-Einstellungen kam von der Geraete-App (Sitzung). */
     private const val VERWALTET = "rosenweg_sip_verwaltet"
+    /** true: der Zugang kam aus "Mit Rosenweg anmelden" (eigenes Handy). */
+    private const val PRIVAT = "rosenweg_sip_privat"
+    private const val PRIVAT_NUMMER = "rosenweg_sip_privat_nummer"
     private const val KONTO_ID = "SipdroidCallProvider"
     private val ANLAGE = Uri.parse("content://${AnlageVerlauf.AUTHORITY}")
     private val arbeit = Executors.newSingleThreadExecutor()
@@ -146,6 +149,43 @@ object PersoenlichesKonto {
             !b.getBoolean("angemeldet", false) || b.getString("password").isNullOrEmpty() -> vergessen(app)
             else -> uebernehmen(app, b)
         }
+    }
+
+    /** Eigenes Handy, mit dem Rosenweg-Konto angemeldet: persoenliche Nummer, sonst null. */
+    fun privatNummer(ctx: Context): String? =
+        prefs(ctx).takeIf { it.getBoolean(PRIVAT, false) }?.getString(PRIVAT_NUMMER, null)
+
+    internal fun privatZugang(ctx: Context): Pair<String, String>? {
+        val p = prefs(ctx)
+        if (!p.getBoolean(PRIVAT, false)) return null
+        val u = p.getString(Settings.PREF_USERNAME, "").orEmpty()
+        val pw = p.getString(Settings.PREF_PASSWORD, "").orEmpty()
+        return if (u.isNotEmpty() && pw.isNotEmpty()) u to pw else null
+    }
+
+    /** Zugang von /api/telefon/privat/anmelden uebernehmen und registrieren (blockierend ok). */
+    internal fun privatUebernehmen(ctx: Context, j: org.json.JSONObject) {
+        val app = ctx.applicationContext
+        val b = Bundle().apply {
+            putBoolean("angemeldet", true)
+            listOf("user", "auth_user", "password", "server", "transport", "name").forEach { putString(it, j.optString(it)) }
+            putInt("port", j.optInt("port", 5060))
+        }
+        arbeit.submit {
+            uebernehmen(app, b)
+            prefs(app).edit().putBoolean(VERWALTET, false).putBoolean(PRIVAT, true)
+                .putString(PRIVAT_NUMMER, j.optString("nummer")).commit()
+        }.get()
+    }
+
+    internal fun privatVergessen(ctx: Context) {
+        val app = ctx.applicationContext
+        arbeit.submit {
+            // vergessen() raeumt Server/Port nur bei VERWALTET weg - der Zugang war ganz von uns
+            prefs(app).edit().putBoolean(VERWALTET, true).commit()
+            vergessen(app)
+            prefs(app).edit().remove(PRIVAT).remove(PRIVAT_NUMMER).commit()
+        }.get()
     }
 
     private fun manuellEingerichtet(app: Context): Boolean {

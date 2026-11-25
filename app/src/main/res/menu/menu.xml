@@ -40,6 +40,10 @@
         android:title="@string/settings"
         app:showAsAction="never" />
     <item
+        android:id="@+id/rosenweg_anmelden"
+        android:title="@string/rosenweg_anmelden"
+        app:showAsAction="never" />
+    <item
         android:id="@+id/rosenweg_sip_konto"
         android:title="@string/rosenweg_sip_konto"
         app:showAsAction="never" />
