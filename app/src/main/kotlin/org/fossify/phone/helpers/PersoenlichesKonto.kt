@@ -106,9 +106,20 @@ object PersoenlichesKonto {
         arbeit.execute {
             try {
                 if (geraetDa(app) || prefs(app).getBoolean(VERWALTET, false)) vergessen(app)
+                // Geteiltes Telefon: die Anrufliste gehoert der Person, die sich abmeldet
+                if (geraetDa(app)) anruflisteLoeschen(app)
             } catch (e: Exception) {
                 Log.w(TAG, "Abmelden: ${e.javaClass.simpleName}")
             }
+        }
+    }
+
+    private fun anruflisteLoeschen(app: Context) {
+        try {
+            val n = app.contentResolver.delete(android.provider.CallLog.Calls.CONTENT_URI, null, null)
+            Log.i(TAG, "Anrufliste geloescht ($n)")
+        } catch (e: Exception) {
+            Log.w(TAG, "Anrufliste loeschen: ${e.javaClass.simpleName}")
         }
     }
 
