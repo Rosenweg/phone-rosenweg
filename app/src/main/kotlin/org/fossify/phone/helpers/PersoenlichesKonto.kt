@@ -131,6 +131,10 @@ object PersoenlichesKonto {
 
     private fun abgleichenJetzt(app: Context, grund: String) {
         if (!geraetDa(app)) {
+            if (prefs(app).getBoolean(PRIVAT, false)) {
+                privatNachfragen(app, grund)
+                return
+            }
             // Privates Telefon: ein Zugang aus einer frueheren Sitzung gilt nicht mehr
             if (prefs(app).getBoolean(VERWALTET, false)) {
                 vergessen(app)
@@ -151,6 +155,59 @@ object PersoenlichesKonto {
             // leer = alte Geraete-App ohne sip_person; false = niemand angemeldet / keine Nummer
             !b.getBoolean("angemeldet", false) || b.getString("password").isNullOrEmpty() -> vergessen(app)
             else -> uebernehmen(app, b)
+        }
+    }
+
+    /**
+     * Eigenes Handy (Stefan 25.11.2026): bei der Anlage nachfragen. Gibt es den Zugang nicht mehr
+     * (im Web abgemeldet), hier auch abmelden; sonst die aktuellen Zugangsdaten uebernehmen (z.B.
+     * der Wechsel auf SIP ueber TLS 5061 fuer unterwegs). Ohne Netz bleibt alles, wie es ist.
+     */
+    private fun privatNachfragen(app: Context, grund: String) {
+        val j = try {
+            RosenwegAnmeldung.stand(app)
+        } catch (e: Exception) {
+            Log.i(TAG, "Anlage nicht erreichbar ($grund): ${e.javaClass.simpleName}")
+            Receiver.engine(app).register()
+            return
+        }
+        if (j == null) {
+            Log.i(TAG, "im Web abgemeldet ($grund) - Zugang vergessen")
+            prefs(app).edit().putBoolean(VERWALTET, true).commit()
+            vergessen(app)
+            prefs(app).edit().remove(PRIVAT).remove(PRIVAT_NUMMER).commit()
+            anruflisteLoeschen(app)
+            return
+        }
+        val b = Bundle().apply {
+            putBoolean("angemeldet", true)
+            listOf("user", "auth_user", "password", "server", "transport").forEach { putString(it, j.optString(it)) }
+            putString("name", Receiver.personName)
+            putInt("port", j.optInt("port", 5060))
+        }
+        // uebernehmen() vergleicht nur bei VERWALTET - fuer den Vergleich kurz setzen
+        prefs(app).edit().putBoolean(VERWALTET, true).commit()
+        uebernehmen(app, b)
+        prefs(app).edit().putBoolean(VERWALTET, false).putBoolean(PRIVAT, true)
+            .putString(PRIVAT_NUMMER, j.optString("nummer").ifEmpty { prefs(app).getString(PRIVAT_NUMMER, "") }).commit()
+    }
+
+    /** Alle 30 Min. nachfragen (eigenes Handy): Web-Abmeldung und geaenderte Zugangsdaten. */
+    fun nachfragenPlanen(c: Context) {
+        val am = c.getSystemService(android.app.AlarmManager::class.java) ?: return
+        val pi = android.app.PendingIntent.getBroadcast(
+            c, 4321, android.content.Intent(c, Nachfrage::class.java),
+            android.app.PendingIntent.FLAG_IMMUTABLE or android.app.PendingIntent.FLAG_UPDATE_CURRENT
+        )
+        am.setInexactRepeating(
+            android.app.AlarmManager.ELAPSED_REALTIME, android.os.SystemClock.elapsedRealtime() + android.app.AlarmManager.INTERVAL_HALF_HOUR,
+            android.app.AlarmManager.INTERVAL_HALF_HOUR, pi
+        )
+    }
+
+    class Nachfrage : android.content.BroadcastReceiver() {
+        override fun onReceive(context: Context, intent: android.content.Intent) {
+            if (!geraetDa(context) && privatNummer(context) != null) abgleichen(context, "nachfrage")
         }
     }
 

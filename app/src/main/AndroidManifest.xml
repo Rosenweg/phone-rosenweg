@@ -220,6 +220,9 @@
         <!-- Rosenweg: persoenliches SIP-Konto (Sipdroid-Kern im Modul :sipdroid). Die
              Broadcasts der Geraete-App kommen nur von Apps mit der Rosenweg-Signatur. -->
         <receiver
+            android:name=".helpers.PersoenlichesKonto$Nachfrage"
+            android:exported="false" />
+        <receiver
             android:name=".receivers.RosenwegSipEmpfaenger"
             android:exported="true"
             android:permission="ch.rosenweg4303.permission.ANLAGE">

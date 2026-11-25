@@ -29,6 +29,7 @@ class RosenwegSipStart : BroadcastReceiver() {
             PersoenlichesKonto.abgleichen(context, "start")
             Vollbildrecht.pruefen(context)
             Vollbildrecht.planen(context)
+            PersoenlichesKonto.nachfragenPlanen(context)
         }
     }
 }

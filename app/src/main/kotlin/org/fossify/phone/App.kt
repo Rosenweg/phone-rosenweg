@@ -11,6 +11,7 @@ class App : FossifyApp() {
         super.onCreate()
         if (getSystemService(UserManager::class.java)?.isUserUnlocked != false) {
             PersoenlichesKonto.abgleichen(this, "app")
+            PersoenlichesKonto.nachfragenPlanen(this)
         }
         Vollbildrecht.pruefen(this)
         Vollbildrecht.planen(this)

@@ -98,6 +98,23 @@ object RosenwegAnmeldung {
         return j.optString("nummer")
     }
 
+    /**
+     * Stand des eigenen Zugangs an der Anlage (blockierend): aktuelle Zugangsdaten, null = Zugang
+     * gibt es nicht mehr (im Web auf /smartphones abgemeldet). Wirft bei Netzfehlern.
+     */
+    fun stand(c: Context): JSONObject? {
+        val zugang = PersoenlichesKonto.privatZugang(c) ?: return null
+        val (status, text) = post(
+            "$ANLAGE/api/telefon/privat/stand", "application/json",
+            JSONObject().put("user", zugang.first).put("password", zugang.second).toString(), null
+        )
+        return when (status) {
+            200 -> JSONObject(text)
+            401 -> null
+            else -> throw java.io.IOException("Anlage: $status")
+        }
+    }
+
     /** Abmelden an der Anlage (blockierend); vergisst den Zugang auch ohne Netz. */
     fun abmelden(c: Context) {
         val zugang = PersoenlichesKonto.privatZugang(c)
