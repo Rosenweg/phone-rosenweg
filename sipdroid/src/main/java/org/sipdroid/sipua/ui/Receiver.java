@@ -804,7 +804,9 @@ import org.zoolu.sip.provider.SipProvider;
         			return AudioManager.MODE_IN_COMMUNICATION;
 		}
 		
-	    static Handler mHandler = new Handler() {
+	    // Rosenweg Telefon: Receiver wird auch aus Hintergrund-Threads zuerst geladen (persoenliches
+	    // Konto) — der Handler muss fest am Haupt-Thread haengen, sonst Absturz beim Klassen-Laden.
+	    static Handler mHandler = new Handler(android.os.Looper.getMainLooper()) {
 	    	public void handleMessage(Message msg) {
 	    		switch (msg.what) {
 	    		case MSG_HOLD:
