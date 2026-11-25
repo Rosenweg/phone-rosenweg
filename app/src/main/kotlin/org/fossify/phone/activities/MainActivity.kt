@@ -120,6 +120,8 @@ class MainActivity : SimpleActivity() {
 
         updateMenuColors()
         refreshMenuItems()   // Rosenweg: "Mit Rosenweg anmelden" / "Abmelden" nach dem Ruecksprung
+        // einmal pro Start fragen (nicht bei jedem Zurueckkehren aus dem Dialog)
+        if (!akkuGefragt) akkuGefragt = org.fossify.phone.helpers.RosenwegAnmeldung.akkuAusnahmeErfragen(this)
         val properPrimaryColor = getProperPrimaryColor()
         val dialpadIcon = resources.getColoredDrawableWithColor(R.drawable.ic_dialpad_vector, properPrimaryColor.getContrastColor())
         binding.mainDialpadButton.setImageDrawable(dialpadIcon)
@@ -254,6 +256,8 @@ class MainActivity : SimpleActivity() {
             }
         }
     }
+
+    private var akkuGefragt = false
 
     private fun rosenwegAnmelden() {
         val nummer = org.fossify.phone.helpers.PersoenlichesKonto.privatNummer(this)

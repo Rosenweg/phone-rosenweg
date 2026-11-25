@@ -29,6 +29,7 @@ public class SipConnectionService extends ConnectionService {
                 connection.setCallerDisplayName(number, android.telecom.TelecomManager.PRESENTATION_ALLOWED);
             }
         }
+        connection.setAudioModeIsVoip(true);
         connection.setRinging();
         Receiver.activeConnection = connection;
         Receiver.startCallForeground();

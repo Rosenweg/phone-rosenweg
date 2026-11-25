@@ -115,6 +115,27 @@ object RosenwegAnmeldung {
         PersoenlichesKonto.privatVergessen(c)
     }
 
+    /**
+     * Eigenes Handy: ohne Akku-Ausnahme stoppt Android den Anmeldedienst nach ein paar Minuten
+     * im Hintergrund ("app idle") und laesst ihn nicht wieder starten - dann klingelt nichts.
+     * Fragt mit dem System-Dialog nach, solange die Ausnahme fehlt (nur angemeldet, privat).
+     */
+    @android.annotation.SuppressLint("BatteryLife")
+    fun akkuAusnahmeErfragen(a: Activity): Boolean {
+        if (PersoenlichesKonto.privatNummer(a) == null) return false
+        val pm = a.getSystemService(android.os.PowerManager::class.java) ?: return false
+        if (pm.isIgnoringBatteryOptimizations(a.packageName)) return false
+        return try {
+            a.startActivity(
+                Intent(android.provider.Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS, Uri.parse("package:" + a.packageName))
+            )
+            true
+        } catch (e: Exception) {
+            Log.w(TAG, "Akku-Ausnahme: ${e.javaClass.simpleName}")
+            false
+        }
+    }
+
     private fun post(url: String, typ: String, body: String, bearer: String?): Pair<Int, String> {
         val v = URL(url).openConnection() as HttpURLConnection
         try {

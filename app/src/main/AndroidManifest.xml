@@ -198,6 +198,10 @@
             <meta-data
                 android:name="android.telecom.IN_CALL_SERVICE_UI"
                 android:value="true" />
+            <!-- Rosenweg: auch die selbst verwalteten SIP-Anrufe (Konto ohne Freischalten) -->
+            <meta-data
+                android:name="android.telecom.INCLUDE_SELF_MANAGED_CALLS"
+                android:value="true" />
 
             <intent-filter>
                 <action android:name="android.telecom.InCallService" />
