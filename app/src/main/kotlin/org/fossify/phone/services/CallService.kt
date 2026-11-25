@@ -4,6 +4,7 @@ import android.telecom.Call
 import android.telecom.CallAudioState
 import android.telecom.InCallService
 import org.fossify.commons.extensions.canUseFullScreenIntent
+import org.fossify.phone.helpers.Vollbildrecht
 import org.fossify.commons.extensions.hasPermission
 import org.fossify.commons.helpers.PERMISSION_POST_NOTIFICATIONS
 import org.fossify.phone.activities.CallActivity
@@ -40,12 +41,14 @@ class CallService : InCallService() {
         // Incoming/Outgoing (locked): high priority (FSI)
         // Incoming (unlocked): if user opted in, low priority ➜ manual activity start, otherwise high priority (FSI)
         // Outgoing (unlocked): low priority ➜ manual activity start
+        Vollbildrecht.pruefen(this)
         val isIncoming = !call.isOutgoing()
         val isDeviceLocked = !powerManager.isInteractive || keyguardManager.isDeviceLocked
         val lowPriority = when {
             isIncoming && isDeviceLocked -> false
             !isIncoming && isDeviceLocked -> false
-            isIncoming && !isDeviceLocked -> config.alwaysShowFullscreen
+            // Rosenweg: auf geteilten Telefonen immer Vollbild (unabhaengig von der persoenlichen Einstellung)
+            isIncoming && !isDeviceLocked -> config.alwaysShowFullscreen || Vollbildrecht.geteilt(this)
             else -> true
         }
 

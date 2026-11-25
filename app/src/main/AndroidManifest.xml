@@ -211,6 +211,11 @@
             </intent-filter>
         </receiver>
 
+        <!-- Rosenweg: Vollbild-Recht regelmaessig pruefen (Vollbildrecht.planen) -->
+        <receiver
+            android:name=".helpers.Vollbildrecht$Pruefung"
+            android:exported="false" />
+
         <receiver
             android:name=".receivers.RosenwegSipStart"
             android:exported="true">

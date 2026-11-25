@@ -4,6 +4,7 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import org.fossify.phone.helpers.PersoenlichesKonto
+import org.fossify.phone.helpers.Vollbildrecht
 
 /**
  * Rosenweg: An-/Abmelden am geteilten Telefon und Wechsel des persoenlichen SIP-Zugangs
@@ -13,8 +14,10 @@ class RosenwegSipEmpfaenger : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
         when (intent.action) {
             PersoenlichesKonto.ABGEMELDET -> PersoenlichesKonto.abgemeldet(context)
-            PersoenlichesKonto.ANGEMELDET, PersoenlichesKonto.SIP_PERSON_GEAENDERT ->
+            PersoenlichesKonto.ANGEMELDET, PersoenlichesKonto.SIP_PERSON_GEAENDERT -> {
                 PersoenlichesKonto.abgleichen(context, intent.action.orEmpty().substringAfterLast('.'))
+                Vollbildrecht.pruefen(context)
+            }
         }
     }
 }
@@ -24,6 +27,8 @@ class RosenwegSipStart : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
         if (intent.action == Intent.ACTION_MY_PACKAGE_REPLACED || intent.action == Intent.ACTION_BOOT_COMPLETED) {
             PersoenlichesKonto.abgleichen(context, "start")
+            Vollbildrecht.pruefen(context)
+            Vollbildrecht.planen(context)
         }
     }
 }
