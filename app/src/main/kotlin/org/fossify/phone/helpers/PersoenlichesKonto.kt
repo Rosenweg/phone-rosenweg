@@ -44,7 +44,6 @@ object PersoenlichesKonto {
     /** true: der Zugang kam aus "Mit Rosenweg anmelden" (eigenes Handy). */
     private const val PRIVAT = "rosenweg_sip_privat"
     private const val PRIVAT_NUMMER = "rosenweg_sip_privat_nummer"
-    private val KONTO_ID get() = Receiver.KONTO_ID
     private val ANLAGE = Uri.parse("content://${AnlageVerlauf.AUTHORITY}")
     private val arbeit = Executors.newSingleThreadExecutor()
 
@@ -61,7 +60,7 @@ object PersoenlichesKonto {
 
     /** Anrufkonto dieser App (Telecom), auch wenn es gerade offline ist. */
     fun handle(ctx: Context) = PhoneAccountHandle(
-        ComponentName(ctx.packageName, "org.sipdroid.sipua.ui.SipConnectionService"), KONTO_ID
+        ComponentName(ctx.packageName, "org.sipdroid.sipua.ui.SipConnectionService"), Receiver.kontoId(ctx)
     )
 
     /**
@@ -70,7 +69,7 @@ object PersoenlichesKonto {
      */
     fun fuerAnruf(ctx: Context, nummer: String): PhoneAccountHandle? {
         if (istNotruf(ctx, nummer)) return null
-        if (Receiver.SELBST_VERWALTET) {
+        if (Receiver.selbstVerwaltet(ctx)) {
             // selbst verwaltet: steht nie in callCapablePhoneAccounts - registriert?
             return if (Receiver.mSipdroidEngine?.isRegistered == true) handle(ctx) else null
         }

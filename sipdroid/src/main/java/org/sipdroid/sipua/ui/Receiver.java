@@ -146,8 +146,23 @@ import org.zoolu.sip.provider.SipProvider;
 		 * erklaert, laufen die Anrufe trotzdem durch ihr Anruffenster und (LOG_SELF_MANAGED)
 		 * in die Anrufliste. Darunter das fruehere verwaltete Konto (muss freigeschaltet werden).
 		 */
-		public static final boolean SELBST_VERWALTET = android.os.Build.VERSION.SDK_INT >= 30;
-		public static final String KONTO_ID = SELBST_VERWALTET ? "RosenwegSelbst" : "SipdroidCallProvider";
+		/**
+		 * Selbst verwaltet nur auf privaten Handys (Stefan 25.11.2026: "abhaengig von der App
+		 * Geraet"): ist Rosenweg Geraet installiert (geteiltes, verwaltetes Telefon), bleibt
+		 * das verwaltete Konto - dort schaltet es das Einrichtungsskript frei.
+		 */
+		public static boolean selbstVerwaltet(Context c) {
+			if (android.os.Build.VERSION.SDK_INT < 30 || c == null) return false;
+			try {
+				return c.getPackageManager().resolveContentProvider("ch.rosenweg4303.telefon.anlage", 0) == null;
+			} catch (Exception e) {
+				return true;
+			}
+		}
+
+		public static String kontoId(Context c) {
+			return selbstVerwaltet(c) ? "RosenwegSelbst" : "SipdroidCallProvider";
+		}
 		/** Rosenweg: Name der Person fuer die Kontobeschreibung (setzt Rosenweg Telefon). */
 		public static volatile String personName = null;
 		public static android.telecom.PhoneAccountHandle phoneAccountHandle = null;
@@ -162,15 +177,15 @@ import org.zoolu.sip.provider.SipProvider;
 					try {
 						telecomManager.unregisterPhoneAccount(new android.telecom.PhoneAccountHandle(componentName, "SipdroidAccount"));
 					} catch (Exception ignored) {}
-					if (SELBST_VERWALTET) {
-						// Rosenweg: frueheres verwaltetes Konto weg (Selbstverwaltung laesst sich an
-						// einem bestehenden Konto nicht umstellen, darum eigene Kennung)
-						try {
-							telecomManager.unregisterPhoneAccount(new android.telecom.PhoneAccountHandle(componentName, "SipdroidCallProvider"));
-						} catch (Exception ignored) {}
-					}
+					// Rosenweg: das jeweils andere Konto weg (Selbstverwaltung laesst sich an
+					// einem bestehenden Konto nicht umstellen, darum zwei Kennungen)
+					String id = kontoId(context);
+					String anderes = "RosenwegSelbst".equals(id) ? "SipdroidCallProvider" : "RosenwegSelbst";
+					try {
+						telecomManager.unregisterPhoneAccount(new android.telecom.PhoneAccountHandle(componentName, anderes));
+					} catch (Exception ignored) {}
 
-					phoneAccountHandle = new android.telecom.PhoneAccountHandle(componentName, KONTO_ID);
+					phoneAccountHandle = new android.telecom.PhoneAccountHandle(componentName, id);
 					updatePhoneAccount(context);
 				} catch (Throwable e) {
 					telecomSetupError = android.util.Log.getStackTraceString(e);
@@ -221,7 +236,7 @@ import org.zoolu.sip.provider.SipProvider;
 						.addSupportedUriScheme("tel")
 						.setIcon(android.graphics.drawable.Icon.createWithResource(context, context.getApplicationInfo().icon));
 				
-				if (SELBST_VERWALTET) {
+				if ("RosenwegSelbst".equals(phoneAccountHandle.getId())) {
 					// immer selbst verwaltet (umschalten geht nicht); offline lehnt
 					// SipConnectionService gehende Anrufe ab, PersoenlichesKonto waehlt es dann nicht
 					builder.setCapabilities(android.telecom.PhoneAccount.CAPABILITY_SELF_MANAGED);
