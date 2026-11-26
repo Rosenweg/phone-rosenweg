@@ -63,6 +63,61 @@ object AnlageVerlauf {
         return ergebnis
     }
 
+    @Volatile private var privatCache: Pair<Long, List<RecentCall>>? = null
+
+    /**
+     * Rosenweg (26.11.2026): privates Handy - Verlauf direkt von der Anlage (PBX-API mit dem
+     * eigenen Zugang, letzte 90 Tage), hoechstens einmal pro Minute geholt. Voicemails werden
+     * hier nicht abgespielt (das geht nur ueber Rosenweg Geraet): als verpasst/angenommen.
+     * Blockiert: nur im Hintergrund aufrufen.
+     */
+    fun ladenPrivat(context: Context, contacts: List<Contact>): List<RecentCall> {
+        val jetzt = android.os.SystemClock.elapsedRealtime()
+        privatCache?.let { (wann, liste) -> if (jetzt - wann < 60_000) return mitKontakten(liste, contacts) }
+        val a = RosenwegAnmeldung.anlageVerlauf(context) ?: return privatCache?.second?.let { mitKontakten(it, contacts) } ?: emptyList()
+        val format = java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss", java.util.Locale.US).apply {
+            timeZone = java.util.TimeZone.getTimeZone("UTC")
+        }
+        val liste = (0 until a.length()).mapNotNull { i ->
+            val o = a.optJSONObject(i) ?: return@mapNotNull null
+            val id = o.optInt("id")
+            val nummer = o.optString("nummer").takeIf { it != "null" }.orEmpty()
+            val beginn = try { format.parse(o.optString("beginn"))?.time } catch (e: Exception) { null } ?: return@mapNotNull null
+            RecentCall(
+                id = -id,   // eigene Nummernreihe wie beim geteilten Telefon
+                phoneNumber = nummer,
+                name = o.optString("gegenueber_name").takeIf { it.isNotEmpty() && it != "null" } ?: nummer,
+                photoUri = "",
+                startTS = beginn,
+                duration = o.optInt("dauer"),
+                type = when (o.optString("richtung")) {
+                    "ausgehend" -> Calls.OUTGOING_TYPE
+                    "eingehend" -> Calls.INCOMING_TYPE
+                    else -> Calls.MISSED_TYPE
+                },
+                simID = -1,
+                simColor = -1,
+                specificNumber = "",
+                specificType = "",
+                isUnknownNumber = nummer.isEmpty(),
+                anlageId = 0,   // keine Voicemail-Wiedergabe ueber die Geraete-App
+                voicemailText = o.optString("voicemail").takeIf { it != "null" }.orEmpty(),
+            )
+        }
+        privatCache = jetzt to liste
+        return mitKontakten(liste, contacts)
+    }
+
+    /** Beim Abmelden: den zwischengespeicherten Verlauf vergessen. */
+    fun privatVergessen() {
+        privatCache = null
+    }
+
+    private fun mitKontakten(liste: List<RecentCall>, contacts: List<Contact>) = liste.map { r ->
+        val k = if (r.phoneNumber.isEmpty()) null else contacts.firstOrNull { it.doesHavePhoneNumber(r.phoneNumber) }
+        if (k == null) r else r.copy(name = k.getNameToDisplay(), photoUri = k.photoUri)
+    }
+
     /**
      * Lokales Protokoll + Anlage zusammenfuehren. Ein Anruf ueber dieses Geraet steht
      * in beiden: dann gilt der lokale Eintrag (gleiche Nummer, hoechstens 2 Min. Abstand),

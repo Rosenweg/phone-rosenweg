@@ -225,7 +225,11 @@ public class InviteTransactionServer extends TransactionServer {
 				Message ok200 = MessageFactory.createResponse(msg, 200, SipResponses.reasonOf(200), null);
 				ok200.removeServerHeader();
 				ok200.addContactHeader(new ContactHeader(ok200.getToHeader().getNameAddress()), false);
-				sip_provider.sendMessage(ok200, connection_id);
+				// Rosenweg (privates Handy): ueber die Verbindung antworten, auf der OPTIONS kam
+				// (die eigene connection_id ist im Wartezustand noch null)
+				sip_provider.sendMessage(ok200, connection_id != null
+						|| org.sipdroid.sipua.ui.Receiver.telecomErlaubt(org.sipdroid.sipua.ui.Receiver.mContext)
+						? connection_id : msg.getConnectionId());
 				return;
 			}
 			

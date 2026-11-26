@@ -46,8 +46,14 @@ class RecentsHelper(private val context: Context) {
                     val privateContacts = MyContactsContentProvider.getContacts(context, privateCursor)
                     if (privateContacts.isNotEmpty()) contacts.addAll(privateContacts)
                     val blocked = context.getBlockedNumbersSafe()
+                    // eigene Liste (Anrufe ueber dieses Handy) + Verlauf der Anlage (alle Anrufe an
+                    // die persoenliche Nummer), doppelte gelten einmal (der lokale Eintrag)
+                    val alle = AnlageVerlauf.zusammenfuehren(
+                        EigeneAnrufliste.laden(context, contacts).sortedByDescending { it.startTS },
+                        AnlageVerlauf.ladenPrivat(context, contacts)
+                    )
                     callback(
-                        EigeneAnrufliste.laden(context, contacts)
+                        alle
                             .filter { !context.isNumberBlocked(it.phoneNumber, blocked) }
                             .sortedByDescending { it.startTS }
                             .take(queryLimit)

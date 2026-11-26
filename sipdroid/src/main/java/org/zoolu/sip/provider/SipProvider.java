@@ -404,6 +404,32 @@ public class SipProvider implements Configurable, TransportListener,
 		connections = null;
 	}
 
+	private static final byte[] CRLF2 = "\r\n\r\n".getBytes();
+
+	/**
+	 * Rosenweg (privates Handy): CRLF-Keepalive (RFC 5626) auf allen TCP/TLS-Verbindungen.
+	 * Haelt die Zuordnung im Mobilfunk-NAT offen und merkt, wenn die Anlage die Verbindung
+	 * geschlossen hat (Schreibfehler). false = keine Verbindung da oder eine war tot (entfernt).
+	 */
+	public synchronized boolean crlfKeepalive() {
+		if (connections == null || connections.isEmpty())
+			return false;
+		boolean ok = true;
+		for (ConnectionIdentifier id : new java.util.ArrayList<ConnectionIdentifier>(connections.keySet())) {
+			ConnectedTransport c = connections.get(id);
+			if (!(c instanceof TcpTransport))
+				continue;
+			try {
+				((TcpTransport) c).sendRaw(CRLF2);
+			} catch (Exception e) {
+				org.sipdroid.sipua.ui.RosenwegLog.w("Verbindung tot (Keepalive: " + e.getClass().getSimpleName() + ")");
+				removeConnection(id);
+				ok = false;
+			}
+		}
+		return ok;
+	}
+
 	public void haltConnections() { // modified
 		if (connections != null) {
 			printLog("connections are going down", LogLevel.LOWER);
@@ -809,6 +835,14 @@ public class SipProvider implements Configurable, TransportListener,
 	 */
 	private ConnectionIdentifier sendMessage(Message msg, String proto,
 			IpAddress dest_ipaddr, int dest_port, int ttl) {
+		// Rosenweg (26.11.2026): TLS laeuft in diesem Kern ueber TcpTransport/TcpSocket (die
+		// Verbindung heisst intern "tcp"). Nachrichten der Anlage tragen aber "Via: SIP/2.0/TLS";
+		// Antworten darauf (z.B. 200 OK auf Qualify-OPTIONS) wurden als "Unsupported protocol
+		// (tls)" verworfen -> Kontakt "Unavail" -> Asterisk waehlt das Handy nicht mehr an.
+		// Darum TLS wie TCP behandeln: die bestehende Verbindung zur Anlage benutzen.
+		// Vorerst nur auf privaten Handys (Stefan: geteilte Telefone unveraendert lassen).
+		if (PROTO_TLS.equals(proto) && !org.sipdroid.sipua.ui.Receiver.telecomErlaubt(org.sipdroid.sipua.ui.Receiver.mContext))
+			proto = PROTO_TCP;
 		ConnectionIdentifier conn_id = new ConnectionIdentifier(proto,
 				dest_ipaddr, dest_port);
 		if (log_all_packets || msg.getLength() > MIN_MESSAGE_LENGTH)
@@ -1227,6 +1261,8 @@ public class SipProvider implements Configurable, TransportListener,
 	/** When Transport terminates. */
 	public void onTransportTerminated(Transport transport, Exception error) {
 		printLog("transport " + transport + " terminated", LogLevel.MEDIUM);
+		org.sipdroid.sipua.ui.RosenwegLog.i("Verbindung zu" + (error != null ? " (" + error.getClass().getSimpleName() + ")" : "")
+				+ " - neu registrieren");
 		if (transport.getProtocol().equals(PROTO_TCP)) {
 			ConnectionIdentifier conn_id = new ConnectionIdentifier(
 					(ConnectedTransport) transport);

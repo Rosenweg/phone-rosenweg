@@ -353,6 +353,9 @@ import org.zoolu.sip.provider.SipProvider;
 				if (state != UserAgent.UA_STATE_IDLE)
 					call_end_reason = -1;
 				call_state = state;
+				RosenwegLog.i("Anruf: " + (state == UserAgent.UA_STATE_INCOMING_CALL ? "INVITE empfangen"
+						: state == UserAgent.UA_STATE_OUTGOING_CALL ? "waehlt" : state == UserAgent.UA_STATE_INCALL ? "verbunden"
+						: state == UserAgent.UA_STATE_HOLD ? "gehalten" : "beendet"));
 				// Rosenweg: ohne Anrufkonto (privates Handy) fuehrt die App den Anruf selbst
 				AnrufBeobachter beob = beobachter;
 				if (beob != null && phoneAccountHandle == null) {

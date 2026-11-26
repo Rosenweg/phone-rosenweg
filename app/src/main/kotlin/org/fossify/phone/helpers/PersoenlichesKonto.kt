@@ -113,6 +113,7 @@ object PersoenlichesKonto {
         // privates Handy: nur die eigene Liste - das Anrufprotokoll des Handys gehoert der Person
         if (!geraetDa(app)) {
             EigeneAnrufliste.leeren(app)
+            AnlageVerlauf.privatVergessen()
             Log.i(TAG, "eigene Anrufliste geloescht")
             return
         }
@@ -127,6 +128,7 @@ object PersoenlichesKonto {
     private fun abgleichenJetzt(app: Context, grund: String) {
         if (!geraetDa(app)) {
             if (prefs(app).getBoolean(PRIVAT, false)) {
+                mobilfunkErlauben(app)   // auch fuer Installationen von vor v43
                 privatNachfragen(app, grund)
                 return
             }
@@ -228,6 +230,7 @@ object PersoenlichesKonto {
             putInt("port", j.optInt("port", 5060))
         }
         arbeit.submit {
+            mobilfunkErlauben(app)
             uebernehmen(app, b)
             prefs(app).edit().putBoolean(VERWALTET, false).putBoolean(PRIVAT, true)
                 .putString(PRIVAT_NUMMER, j.optString("nummer")).commit()
@@ -246,6 +249,21 @@ object PersoenlichesKonto {
 
     /** Privat: SIP-Zugang von Hand eingerichtet (Menue "SIP-Konto von Hand")? */
     fun manuellDa(ctx: Context): Boolean = manuellEingerichtet(ctx.applicationContext)
+
+    /**
+     * Eigenes Handy (Stefan 26.11.2026): auch ueber Mobilfunk erreichbar sein. Der Sipdroid-Kern
+     * registriert ausserhalb des WLAN nur, wenn 3G/4G (5G zaehlt als 4G) bzw. VPN in seinen
+     * Einstellungen an sind (Standard: aus) - sonst "isFast = false (CELLULAR)" und Abmeldung.
+     * Nur fuer den Zugang aus "Mit Rosenweg anmelden"; geteilte Telefone und ein von Hand
+     * eingerichtetes SIP-Konto bleiben, wie sie sind.
+     */
+    private fun mobilfunkErlauben(app: Context) {
+        val p = prefs(app)
+        val schluessel = listOf(Settings.PREF_3G, Settings.PREF_4G, Settings.PREF_VPN)
+        if (schluessel.all { p.getBoolean(it, false) }) return
+        p.edit().apply { schluessel.forEach { putBoolean(it, true) } }.commit()
+        Log.i(TAG, "Mobilfunk/VPN fuer das eigene Handy eingeschaltet")
+    }
 
     private fun manuellEingerichtet(app: Context): Boolean {
         val p = prefs(app)
