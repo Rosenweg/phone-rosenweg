@@ -1,51 +1,139 @@
-# Rosenweg Telefon
+<p align="center"><img src="assets/logo/rosenweg-telefon-512.png" width="96" alt="Logo"></p>
+<h1 align="center">Rosenweg Telefon</h1>
+<p align="center">Telefon-App für die Smartphones im Rosenweg – normal über die SIM und mit der persönlichen Nummer über die Rosenweg-Telefonanlage.</p>
+<p align="center"><a href="https://www.rosenweg4303.ch/apps">Herunterladen</a> · <a href="docs/anleitung.md">Anleitung</a></p>
 
-Telefon-App für die Smartphones der Siedlung Rosenweg in Kaiseraugst. Neben normalen Anrufen über die SIM telefoniert sie über die Rosenweg-Telefonanlage mit der persönlichen Nummer der Person und zeigt deren Anrufliste und Voicemail von der Anlage. Der SIP-Teil stammt aus Sipdroid (Modul `sipdroid`, derselbe Kern wie in Rosenweg Gerät).
+## Inhalt
 
-## Im Rosenweg
+- [Überblick](#überblick)
+- [Plattformen](#plattformen)
+- [Rechte](#rechte)
+- [Bedienung](#bedienung)
+- [Geteilte Telefone und eigenes Handy](#geteilte-telefone-und-eigenes-handy)
+- [Aufbau](#aufbau)
+- [Bauen](#bauen)
+- [CI und Release](#ci-und-release)
+- [Konfiguration](#konfiguration)
+- [Herkunft und Lizenz](#herkunft-und-lizenz)
 
-- **Geteilte Telefone:** Den Zugang zur persönlichen Nummer liefert Rosenweg Gerät nach dem Anmelden; beim Abmelden wird das Konto abgemeldet und die Anrufliste gelöscht. Eingehende Anrufe kommen immer im Vollbild.
-- **Eigenes Handy:** "Mit Rosenweg anmelden" holt einen eigenen Zugang von der Anlage (SIP über TLS); Abmelden im Menü. Rosenweg Telefon mischt sich dort **nicht** ins Android-Telefon ein: es wird nicht Standard-Telefon-App, meldet kein Anrufkonto an, sieht keine Mobilfunk-Anrufe und schreibt nichts ins Anrufprotokoll des Handys. Rosenweg-Anrufe laufen ganz in der App (eigenes Anruffenster, Vollbild-Benachrichtigung, eigene Anrufliste); Notrufe öffnen die Telefon-App des Handys. Die App bittet um eine Ausnahme von der Akku-Optimierung, sonst beendet Android die Registrierung. Sie fragt regelmässig bei der Anlage nach, ob der Zugang noch gilt.
-- Verlauf mit den Anrufen der Person aus der Telefonanlage, persönliche Voicemail anhören. Auch auf dem eigenen Handy: die eigene Liste der App zusammen mit den Anrufen der letzten 90 Tage von der Anlage, ohne Doppel; Abmelden leert nur die Liste der App.
-- Gehende Anrufe laufen über die persönliche Nummer, wenn sie angemeldet ist, Notrufe nie.
-- **Einstellungen pro Person:** Auf geteilten Telefonen gehören die Einstellungen der angemeldeten Person. Sie liegen (über Rosenweg Gerät) auf der Telefonanlage und sind nach dem Anmelden an jedem geteilten Telefon wieder da. Ohne Rosenweg Gerät bleiben sie wie gewohnt auf dem Handy.
-- **Rosenweg Updater:** Auf Handys ohne Rosenweg Gerät prüft die App den App-Katalog der Telefonanlage und bietet Aktualisierungen für alle installierten Rosenweg-Apps an. Jede APK wird vorher geprüft (Prüfsumme, Paketname, Version, Rosenweg-Signatur); Android lässt jede Installation bestätigen. Auf geteilten Telefonen übernimmt das Rosenweg Gerät.
-- **Eigenes Handy über Mobilfunk:** Der private Zugang registriert auch über 3G/4G/5G und VPN, nicht nur im WLAN.
-- **Eigenes Handy, Verbindung:** Keepalive alle 45 s und Registrierung alle 10 Minuten, damit eine tote Verbindung schnell auffällt; fehlen Benachrichtigungen, Vollbild-Recht oder die Akku-Ausnahme, zeigt die App einen roten Hinweis mit Knopf zu den Einstellungen.
-- **Logo:** Rosenweg-Wappen (Turm, Weg, Rose auf Rot) mit dem Zeichen der App rechts unten, erzeugt mit dem Logo-Baukasten aus rosenweg-basis; dazu ein monochromes Designsymbol (Android 13+). Die wählbaren Symbolfarben von Fossify gibt es nicht mehr: alle zeigen dasselbe Rosenweg-Symbol.
+## Überblick
 
-## Installation
+Neben normalen Anrufen über die SIM telefoniert die App über die Rosenweg-Telefonanlage mit der **persönlichen Nummer** der Person und zeigt deren Anrufliste und Voicemail von der Anlage. Der SIP-Teil stammt aus Sipdroid (Modul `sipdroid`, derselbe Kern wie in Rosenweg Gerät).
 
-- **Geteilte Rosenweg-Telefone:** Rosenweg Gerät installiert die App automatisch aus dem App-Katalog der Telefonanlage und hält sie aktuell.
-- **Eigenes Handy:** APK von [www.rosenweg4303.ch/apps](https://www.rosenweg4303.ch/apps) herunterladen und installieren. Danach hält der Rosenweg Updater die Rosenweg-Apps aktuell.
+Was die App kann:
 
-Die App gibt es nicht im Play Store und nicht auf F-Droid. Sie ist mit dem Rosenweg-Schlüssel signiert; Fassungen anderer Herkunft lassen sich nicht darüber installieren.
+- **Persönliche Nummer:** anrufen und angerufen werden über die Anlage; gehende Anrufe laufen über die persönliche Nummer, sobald sie angemeldet ist.
+- **Verlauf:** Anrufe der Person aus der Telefonanlage, ohne Doppel zusammen mit der eigenen Liste der App (letzte 90 Tage).
+- **Voicemail:** persönliche Voicemail direkt in der App anhören.
+- **Notrufe** gehen nie über die Anlage, sondern immer über das Modem bzw. die Telefon-App des Handys.
+- **Einstellungen pro Person** auf den geteilten Telefonen.
+- **Rosenweg Updater:** hält auf dem eigenen Handy alle Rosenweg-Apps aktuell.
+
+## Plattformen
+
+| Plattform | Stand |
+|---|---|
+| Android 8 und neuer (API 26–36) | ja, APK auf [rosenweg4303.ch/apps](https://www.rosenweg4303.ch/apps) |
+| Geteilte Rosenweg-Telefone | ja, Rosenweg Gerät installiert sie (Katalog „immer“) |
+| Eigenes Handy | ja, im WLAN und über Mobilfunk (SIP über TLS) |
+| Play Store, F-Droid | nein – nur mit Rosenweg-Signatur |
+
+## Rechte
+
+Die Rechte vergibt die Anlage bzw. das Portal; die App zeigt nur, was zur angemeldeten Person gehört.
+
+| Wer | darf |
+|---|---|
+| angemeldete Person | mit der eigenen Nummer telefonieren, eigene Anrufliste und Voicemail sehen; eigene Handys auf [/smartphones](https://www.rosenweg4303.ch/smartphones) abmelden; Erreichbarkeit auf /mein-telefon |
+| Technik, Präsident | geteilte Telefone und App-Katalog auf /smartphones verwalten, Zugänge abmelden; Nummern, Gruppen und Dienste der Anlage pflegen |
+
+## Bedienung
+
+| Schritt | So geht’s |
+|---|---|
+| Geteiltes Telefon | mit der Karte anmelden – der Zugang zur persönlichen Nummer kommt von Rosenweg Gerät. Eingehende Anrufe kommen immer im Vollbild. |
+| Eigenes Handy anmelden | Beim Öffnen erscheint der gemeinsame Rosenweg-Anmeldeschirm: Rosenweg-Karte hinten ans Telefon halten (NFC) oder „Mit Rosenweg-Konto anmelden“. Keine PIN. Danach holt die App einen eigenen SIP-Zugang von der Anlage. Ohne Anmeldung ist die App nicht nutzbar. |
+| Anrufen | wählen wie gewohnt; mit angemeldeter persönlicher Nummer geht der Anruf über die Anlage. |
+| Verlauf und Voicemail | in der Anrufliste der App; Voicemail antippen zum Anhören. |
+| Roter Hinweis | fehlen Benachrichtigungen, Vollbild-Recht oder die Akku-Ausnahme, führt ein Knopf zu den Einstellungen. |
+| Abmelden | geteilt: mit dem Abmelden am Telefon (Anrufliste wird gelöscht); eigenes Handy: im Menü, leert nur die Liste der App. |
+
+Ausführlich: [docs/anleitung.md](docs/anleitung.md).
+
+## Geteilte Telefone und eigenes Handy
+
+| | Geteiltes Telefon (mit Rosenweg Gerät) | Eigenes Handy |
+|---|---|---|
+| Anmeldung | gilt die Anmeldung von Rosenweg Gerät (Karte am Sperrbildschirm, PIN) | eigene Anmeldung dieser App über den gemeinsamen Anmeldeschirm (Karte oder Rosenweg-Konto, keine PIN); bis zu 20 Sitzungen pro Person |
+| Zugang | von Rosenweg Gerät nach dem Anmelden, je Gerät und Person | eigener fester SIP-Zugang dieses Handys von der Anlage |
+| Verbindung | im Rosenweg-WLAN | SIP über TLS, auch über 3G/4G/5G und VPN |
+| Android-Telefon | Standard-Telefon-App mit eigenem Anrufkonto für die persönliche Nummer | **nicht** im Android-Telefonie-Framework, nur Rosenweg-Telefonie in der App: keine Standard-App, kein Anrufkonto, sieht keine Mobilfunk-Anrufe, schreibt nichts ins Anrufprotokoll |
+| Anrufe | Android-Anruffenster | eigenes Anruffenster und Vollbild-Benachrichtigung in der App |
+| Einstellungen | gehören der Person, liegen über Rosenweg Gerät auf der Anlage | bleiben auf dem Handy |
+| Abmelden | Konto abgemeldet, Anrufliste gelöscht | im Menü oder im Portal; die App fragt regelmässig nach, ob der Zugang noch gilt |
+
+Auf dem eigenen Handy bittet die App um eine Ausnahme von der Akku-Optimierung, sonst beendet Android die Registrierung. Keepalive alle 45 s und Registrierung alle 10 Minuten, damit eine tote Verbindung schnell auffällt.
+
+Auf einem geteilten Telefon gibt es zwei SIP-Konten: Rosenweg Gerät registriert die Nebenstelle des Geräts (Telefon suchen, Notrufe), Rosenweg Telefon während einer Sitzung den persönlichen Zugang der Person (Beschreibung in Rosenweg/Website, `pbx/GETEILTE-TELEFONE.md`).
+
+## Aufbau
+
+| Teil | Inhalt |
+|---|---|
+| `app/src/main/kotlin/org/fossify/phone/` | Telefon aus Fossify Phone (Kotlin-Namensraum wie im Original) |
+| `…/helpers/PersoenlichesKonto.kt`, `RosenwegAnmeldung.kt`, `Betriebsart.kt` | persönlicher Zugang, Anmeldung auf dem eigenen Handy, geteilt oder privat |
+| `…/helpers/AnlageVerlauf.kt`, `EigeneAnrufliste.kt`, `dialogs/VoicemailDialog.kt` | Anrufliste und Voicemail von der Anlage |
+| `…/activities/EigenerAnrufActivity.kt`, `helpers/EigenerAnruf.kt`, `Klingeln.kt` | Anrufe ganz in der App (eigenes Handy) |
+| `…/receivers/RosenwegSipEmpfaenger.kt` | Wechsel des Zugangs von Rosenweg Gerät (`SIP_PERSON_GEAENDERT`, `ABGEMELDET`) |
+| `sipdroid/` | SIP-Kern aus Sipdroid als Gradle-Modul `:sipdroid`, Pakete `org.sipdroid.*` unverändert, native Codecs per NDK |
+| [commons-rosenweg](https://github.com/Rosenweg/commons-rosenweg) | Fossify Commons in der Rosenweg-Fassung, gemeinsamer Anmeldeschirm (Cloud) und `ch.rosenweg4303:updater` |
+| `assets/logo/` | Logo aus dem Baukasten von rosenweg-basis: Turm, Weg und Rose mit Hörer-Plakette, dazu ein monochromes Designsymbol (Android 13+) |
+
+Paketname `ch.rosenweg4303.phone`. Die Hinweise nach Sipdroids ADDITIONAL_TERMS stehen im Menü unter „Über Android SIP / Sipdroid“.
 
 ## Bauen
 
-Die App baut gegen den Rosenweg-Fork der Fossify Commons und die Rosenweg-Module `cloud`/`updater` (`ch.rosenweg4303:*`). Diese kommen aus dem lokalen Maven-Repository (`mavenLocal()`), also zuerst [commons-rosenweg](https://github.com/Rosenweg/commons-rosenweg) veröffentlichen:
+Zuerst [commons-rosenweg](https://github.com/Rosenweg/commons-rosenweg) ins lokale Maven-Repository veröffentlichen (`mavenLocal()`), dann die App bauen:
 
 ```bash
-# in commons-rosenweg, Zweig rosenweg
+# in commons-rosenweg
 ./gradlew -PVERSION=7.1.3-rosenweg.1 publishToMavenLocal
 
-# in diesem Repo, Zweig rosenweg
+# in diesem Repo
 ./gradlew assembleFossRelease
 ```
 
-Die APK liegt danach unter `app/build/outputs/apk/foss/release/`. Signiert wird mit `keystore.properties` (Vorlage: `keystore.properties_sample`); die Datei und der Schlüssel liegen nicht im Repo. Paketname: `ch.rosenweg4303.phone`.
+Das Modul `sipdroid` braucht das Android NDK (`ndkBuild`, Version in `sipdroid/build.gradle.kts`). Die APK liegt unter `app/build/outputs/apk/foss/release/`. Logo neu erzeugen (rosenweg-basis daneben): `sh assets/logo/erzeugen.sh`.
 
-Das Modul `sipdroid` baut native Codecs mit dem Android NDK (`ndkBuild`, Version siehe `sipdroid/build.gradle.kts`).
+Mehr: [docs/entwickeln.md](docs/entwickeln.md).
 
-Logo neu erzeugen (aus dem Repo-Wurzelverzeichnis, rosenweg-basis daneben): `sh assets/logo/erzeugen.sh`. Welches Zeichen die App trägt, steht in rosenweg-basis `werkzeug/logo/android-apps.txt`.
+## CI und Release
 
-## Neue Version
+| Workflow | Auslöser | Ergebnis |
+|---|---|---|
+| `apps.yml` (Rosenweg) | GitHub-Release veröffentlicht, oder von Hand `gh workflow run apps.yml --ref <tag>` | APK geht an **[rosenweg4303.ch/apps](https://www.rosenweg4303.ch/apps)** und in den App-Katalog der Telefonanlage |
+| `pr.yml`, `testing-build.yml`, `release.yml` u. a. | aus Fossify übernommen | Prüfungen und Play-Store-Release des Originals; für Rosenweg nicht nötig |
 
-APK wie oben bauen und signieren, dann `gh release create v<versionName> <datei.apk> --notes "Was ist neu"` (Tag = versionName der APK, eine APK je Release). Der Workflow `.github/workflows/apps.yml` (wiederverwendbarer Workflow `apps-release.yml` aus Rosenweg/Website) schickt sie an [www.rosenweg4303.ch/apps](https://www.rosenweg4303.ch/apps) und in den App-Katalog der Telefonanlage; damit bekommen sie die geteilten Telefone und der Rosenweg Updater. Anmeldung per GitHub-OIDC, kein gespeichertes Geheimnis; die Anlage prüft Tag, Prüfsumme, Rosenweg-Signatur und Paketnamen. Der Workflow liegt im Standardzweig `main`; `gh release create` ohne `--target` setzt den Tag dort hin. Erneut senden: `gh workflow run apps.yml --ref <tag>`.
+Ablauf einer neuen Version:
+
+1. APK lokal bauen und mit dem Rosenweg-Schlüssel signieren.
+2. `gh release create v<versionName> <datei.apk> --notes "Was ist neu"` – Tag = `versionName` der APK, eine APK je Release, Tag auf `main`.
+3. `apps.yml` ruft `apps-release.yml` aus Rosenweg/Website auf. Anmeldung per GitHub-OIDC, kein gespeichertes Geheimnis; die Anlage prüft Tag, Prüfsumme, Rosenweg-Signatur und Paketnamen.
+
+## Konfiguration
+
+| Wo | Name | Wozu |
+|---|---|---|
+| Repo-Wurzel (nicht im Repo) | `keystore.properties` | Rosenweg-Signierschlüssel; Vorlage `keystore.properties_sample` |
+| `gradle.properties` | `APP_ID`, `VERSION_NAME`, `VERSION_CODE` | Paketname und Version |
+| `gradle/libs.versions.toml`, `app/build.gradle.kts` | `commons`, `ch.rosenweg4303:updater` | Versionen der Rosenweg-Bibliotheken |
+| Anlage (Rosenweg/Website, pbx-api) | `PBX_SIP_TRANSPORT_PRIVAT`, `PBX_SIP_TRANSPORT` | Transport der eigenen Handys (Vorgabe TLS) bzw. der geteilten Telefone |
+
+Für `apps.yml` braucht es kein GitHub-Secret (OIDC).
 
 ## Herkunft und Lizenz
 
-Fork von [Fossify Phone](https://github.com/FossifyOrg/Phone). Der Zweig `main` folgt dem Original, die Rosenweg-Anpassungen liegen im Zweig `rosenweg`. Herzlichen Dank an das Fossify-Team und alle Mitwirkenden für die solide Grundlage.
+Fork von [Fossify Phone](https://github.com/FossifyOrg/Phone). Die Rosenweg-Anpassungen sind in `main` gemergt; `main` ist der Hauptzweig. Herzlichen Dank an das Fossify-Team und alle Mitwirkenden für die solide Grundlage.
 
 Das Modul `sipdroid` enthält den SIP-Kern von [Sipdroid](https://github.com/i-p-tel/sipdroid) (über [Rosenweg Gerät](https://github.com/Rosenweg/android-sip-rosenweg)); dafür gelten zusätzlich [sipdroid/LICENSE.TXT](sipdroid/LICENSE.TXT) und [sipdroid/ADDITIONAL_TERMS.txt](sipdroid/ADDITIONAL_TERMS.txt). Danke auch dem Sipdroid-Projekt.
 
