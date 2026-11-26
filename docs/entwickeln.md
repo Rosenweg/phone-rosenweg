@@ -5,10 +5,10 @@
 Die App baut gegen den Rosenweg-Fork der Fossify Commons und die Rosenweg-Module `cloud`/`updater` (`ch.rosenweg4303:*`). Diese kommen aus dem lokalen Maven-Repository (`mavenLocal()`), also zuerst [commons-rosenweg](https://github.com/Rosenweg/commons-rosenweg) veröffentlichen:
 
 ```bash
-# in commons-rosenweg, Zweig rosenweg
+# in commons-rosenweg, Zweig main
 ./gradlew -PVERSION=7.1.3-rosenweg.1 publishToMavenLocal
 
-# in diesem Repo, Zweig rosenweg
+# in diesem Repo, Zweig main
 ./gradlew assembleFossRelease
 ```
 
@@ -26,7 +26,7 @@ APK wie oben bauen und signieren, dann `gh release create v<versionName> <datei.
 
 ## Zweige und Herkunft
 
-Fork von [Fossify Phone](https://github.com/FossifyOrg/Phone). Der Zweig `main` folgt dem Original, die Rosenweg-Anpassungen liegen im Zweig `rosenweg`. Herzlichen Dank an das Fossify-Team und alle Mitwirkenden für die solide Grundlage.
+Fork von [Fossify Phone](https://github.com/FossifyOrg/Phone). Die Rosenweg-Anpassungen (früher Zweig `rosenweg`) sind in `main` gemergt; `main` ist der Hauptzweig. Herzlichen Dank an das Fossify-Team und alle Mitwirkenden für die solide Grundlage.
 
 Das Modul `sipdroid` enthält den SIP-Kern von [Sipdroid](https://github.com/i-p-tel/sipdroid) (über [Rosenweg Gerät](https://github.com/Rosenweg/android-sip-rosenweg)); dafür gelten zusätzlich [sipdroid/LICENSE.TXT](../sipdroid/LICENSE.TXT) und [sipdroid/ADDITIONAL_TERMS.txt](../sipdroid/ADDITIONAL_TERMS.txt). Danke auch dem Sipdroid-Projekt.
 
