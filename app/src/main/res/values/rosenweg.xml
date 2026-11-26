@@ -1,8 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Rosenweg: Icon-Hintergrund Rot statt Fossify-Gruen. Eigene Farbe, damit
-     die App-Farben (color_primary) unveraendert bleiben. -->
 <resources>
-    <color name="rosenweg_icon_background">#D32F2F</color>
     <!-- Persoenliches SIP-Konto (Sipdroid-Kern, Modul :sipdroid) -->
     <string name="rosenweg_anmelden" translatable="false">Mit Rosenweg anmelden</string>
     <string name="rosenweg_sip_konto" translatable="false">SIP-Konto von Hand (Technik)</string>
