@@ -113,6 +113,7 @@ object PersoenlichesKonto {
         // privates Handy: nur die eigene Liste - das Anrufprotokoll des Handys gehoert der Person
         if (!geraetDa(app)) {
             EigeneAnrufliste.leeren(app)
+            AnlageVerlauf.privatVergessen()
             Log.i(TAG, "eigene Anrufliste geloescht")
             return
         }

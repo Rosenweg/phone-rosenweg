@@ -132,6 +132,7 @@ object RosenwegAnmeldung {
         PersoenlichesKonto.privatVergessen(c)
         // Grundregel: beim Abmelden die lokale Anrufliste (Rosenweg-Anrufe) loeschen
         EigeneAnrufliste.leeren(c)
+        AnlageVerlauf.privatVergessen()
     }
 
     /**
@@ -152,6 +153,34 @@ object RosenwegAnmeldung {
         } catch (e: Exception) {
             Log.w(TAG, "Akku-Ausnahme: ${e.javaClass.simpleName}")
             false
+        }
+    }
+
+    /**
+     * Verlauf der Anlage fuer das eigene Handy (blockierend): alle Anrufe der Person, auch an die
+     * persoenliche Nummer ueber andere Geraete, der letzten [tage] Tage. Ausweis = der eigene
+     * Zugang (HTTP-Basic). null = nicht angemeldet/Netzfehler/401 (dann nur die lokale Liste).
+     */
+    fun anlageVerlauf(c: Context, tage: Int = 90, limit: Int = 500): org.json.JSONArray? {
+        val zugang = PersoenlichesKonto.privatZugang(c) ?: return null
+        val v = URL("$ANLAGE/api/telefon/anrufliste?tage=$tage&limit=$limit").openConnection() as HttpURLConnection
+        return try {
+            v.connectTimeout = 8000
+            v.readTimeout = 12000
+            v.setRequestProperty("Accept", "application/json")
+            val basic = Base64.encodeToString("${zugang.first}:${zugang.second}".toByteArray(), Base64.NO_WRAP)
+            v.setRequestProperty("Authorization", "Basic $basic")
+            if (v.responseCode != 200) {
+                Log.i(TAG, "Verlauf der Anlage: ${v.responseCode}")
+                null
+            } else {
+                JSONObject(v.inputStream.bufferedReader().use { it.readText() }).optJSONArray("anrufe")
+            }
+        } catch (e: Exception) {
+            Log.i(TAG, "Verlauf der Anlage: ${e.javaClass.simpleName}")
+            null
+        } finally {
+            v.disconnect()
         }
     }
 

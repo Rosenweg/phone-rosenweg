@@ -153,6 +153,9 @@ public class SipdroidEngine implements RegisterAgentListener {
 					
 					if (SipStack.default_transport_protocols[0].equals("tls"))
 						SipStack.default_transport_protocols[0] = "tcp";
+					// Rosenweg: privates Handy (Mobilfunk-NAT) alle 10 Min. neu registrieren,
+					// geteilte Telefone wie bisher (1 h)
+					SipStack.default_expires = org.sipdroid.sipua.ui.Receiver.telecomErlaubt(getUIContext()) ? 3600 : PRIVAT_EXPIRES;
 					String version = "Sipdroid/" + Sipdroid.getVersion() + "/" + Build.MODEL;
 					SipStack.ua_info = version;
 					SipStack.server_info = version;
@@ -420,6 +423,14 @@ public class SipdroidEngine implements RegisterAgentListener {
 		return ras[i].isRegistered();
 	}
 	
+	/** Rosenweg: privates Handy - Registrierung und Keepalive (siehe keepAlive()). */
+	static final int PRIVAT_EXPIRES = 600;
+	static final int PRIVAT_KEEPALIVE = 45;
+
+	boolean privat() {
+		return !org.sipdroid.sipua.ui.Receiver.telecomErlaubt(getUIContext());
+	}
+
 	int getKeepaliveInterval(int i) {
 			if (sip_providers != null && sip_providers[i] != null && sip_providers[i].getDefaultTransport().equals("udp")) {
 				return 60;
@@ -436,7 +447,10 @@ public class SipdroidEngine implements RegisterAgentListener {
     		i++;
     	}
 		if (isRegistered(i)) {
-			if (Receiver.on_wlan && getKeepaliveInterval(i) > 0)
+			org.sipdroid.sipua.ui.RosenwegLog.i("registriert (Leitung " + i + (Receiver.on_wlan ? ", WLAN)" : ", Mobilfunk)"));
+			if (privat())
+				Receiver.alarm(PRIVAT_KEEPALIVE, LoopAlarm.class);
+			else if (Receiver.on_wlan && getKeepaliveInterval(i) > 0)
 				Receiver.alarm(getKeepaliveInterval(i), LoopAlarm.class);
 			Receiver.onText(Receiver.REGISTER_NOTIFICATION+i,getUIContext().getString(i == pref?R.string.regpref:R.string.regclick),R.drawable.sym_presence_available,0);
 			reg_ra.subattempts = 0;
@@ -487,6 +501,7 @@ public class SipdroidEngine implements RegisterAgentListener {
     		if (ra == reg_ra) break;
     		i++;
     	}
+		org.sipdroid.sipua.ui.RosenwegLog.w("Registrierung fehlgeschlagen (Leitung " + i + "): " + result);
     	if (isRegistered(i)) {
     		reg_ra.setState(RegisterAgent.UNREGISTERED);
     		Receiver.onText(Receiver.REGISTER_NOTIFICATION+i, null, 0, 0);
@@ -664,6 +679,23 @@ public class SipdroidEngine implements RegisterAgentListener {
 	}
 	
 	public void keepAlive() {
+		if (privat()) {
+			// Rosenweg: privates Handy, auch im Mobilfunk. TCP/TLS: CRLF auf der bestehenden
+			// Verbindung; ist sie tot (Anlage neu geladen, NAT weg), sofort neu registrieren.
+			boolean neu = false;
+			for (int j = 0; j < LINES; j++) {
+				if (sip_providers == null || sip_providers[j] == null || !isRegistered(j)) continue;
+				if (!sip_providers[j].getDefaultTransport().equals("udp") && !sip_providers[j].crlfKeepalive())
+					neu = true;
+			}
+			if (neu) {
+				org.sipdroid.sipua.ui.RosenwegLog.i("Keepalive: Verbindung weg - neu registrieren");
+				register();
+			}
+			if (isRegistered() || neu)
+				Receiver.alarm(PRIVAT_KEEPALIVE, LoopAlarm.class);
+			return;
+		}
 		int i = 0;
 		for (KeepAliveSip ka : kas) {
 			if (ka != null && Receiver.on_wlan && isRegistered(i) && getKeepaliveInterval(i) > 0)

@@ -115,6 +115,12 @@ class TcpTransport implements ConnectedTransport, TcpConnectionListener {
 		}
 	}
 
+	/** Rosenweg: rohe Bytes senden (CRLF-Keepalive, RFC 5626). Wirft, wenn die Verbindung tot ist. */
+	public void sendRaw(byte[] data) throws IOException {
+		if (tcp_conn == null) throw new IOException("keine Verbindung");
+		tcp_conn.send(data);
+	}
+
 	/** Stops running */
 	public void halt() {
 		if (tcp_conn != null)

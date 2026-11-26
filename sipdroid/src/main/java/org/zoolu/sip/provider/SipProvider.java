@@ -404,6 +404,32 @@ public class SipProvider implements Configurable, TransportListener,
 		connections = null;
 	}
 
+	private static final byte[] CRLF2 = "\r\n\r\n".getBytes();
+
+	/**
+	 * Rosenweg (privates Handy): CRLF-Keepalive (RFC 5626) auf allen TCP/TLS-Verbindungen.
+	 * Haelt die Zuordnung im Mobilfunk-NAT offen und merkt, wenn die Anlage die Verbindung
+	 * geschlossen hat (Schreibfehler). false = keine Verbindung da oder eine war tot (entfernt).
+	 */
+	public synchronized boolean crlfKeepalive() {
+		if (connections == null || connections.isEmpty())
+			return false;
+		boolean ok = true;
+		for (ConnectionIdentifier id : new java.util.ArrayList<ConnectionIdentifier>(connections.keySet())) {
+			ConnectedTransport c = connections.get(id);
+			if (!(c instanceof TcpTransport))
+				continue;
+			try {
+				((TcpTransport) c).sendRaw(CRLF2);
+			} catch (Exception e) {
+				org.sipdroid.sipua.ui.RosenwegLog.w("Verbindung tot (Keepalive: " + e.getClass().getSimpleName() + ")");
+				removeConnection(id);
+				ok = false;
+			}
+		}
+		return ok;
+	}
+
 	public void haltConnections() { // modified
 		if (connections != null) {
 			printLog("connections are going down", LogLevel.LOWER);
@@ -1235,6 +1261,8 @@ public class SipProvider implements Configurable, TransportListener,
 	/** When Transport terminates. */
 	public void onTransportTerminated(Transport transport, Exception error) {
 		printLog("transport " + transport + " terminated", LogLevel.MEDIUM);
+		org.sipdroid.sipua.ui.RosenwegLog.i("Verbindung zu" + (error != null ? " (" + error.getClass().getSimpleName() + ")" : "")
+				+ " - neu registrieren");
 		if (transport.getProtocol().equals(PROTO_TCP)) {
 			ConnectionIdentifier conn_id = new ConnectionIdentifier(
 					(ConnectedTransport) transport);
