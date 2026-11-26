@@ -52,7 +52,7 @@ Die Rechte vergibt die Anlage bzw. das Portal; die App zeigt nur, was zur angeme
 | Schritt | So geht’s |
 |---|---|
 | Geteiltes Telefon | mit der Karte anmelden – der Zugang zur persönlichen Nummer kommt von Rosenweg Gerät. Eingehende Anrufe kommen immer im Vollbild. |
-| Eigenes Handy anmelden | „Mit Rosenweg anmelden“ – die App holt einen eigenen Zugang von der Anlage. |
+| Eigenes Handy anmelden | Beim Öffnen erscheint der gemeinsame Rosenweg-Anmeldeschirm: Rosenweg-Karte hinten ans Telefon halten (NFC) oder „Mit Rosenweg-Konto anmelden“. Keine PIN. Danach holt die App einen eigenen SIP-Zugang von der Anlage. Ohne Anmeldung ist die App nicht nutzbar. |
 | Anrufen | wählen wie gewohnt; mit angemeldeter persönlicher Nummer geht der Anruf über die Anlage. |
 | Verlauf und Voicemail | in der Anrufliste der App; Voicemail antippen zum Anhören. |
 | Roter Hinweis | fehlen Benachrichtigungen, Vollbild-Recht oder die Akku-Ausnahme, führt ein Knopf zu den Einstellungen. |
@@ -64,9 +64,10 @@ Ausführlich: [docs/anleitung.md](docs/anleitung.md).
 
 | | Geteiltes Telefon (mit Rosenweg Gerät) | Eigenes Handy |
 |---|---|---|
-| Zugang | von Rosenweg Gerät nach dem Anmelden, je Gerät und Person | „Mit Rosenweg anmelden“, eigener Zugang |
+| Anmeldung | gilt die Anmeldung von Rosenweg Gerät (Karte am Sperrbildschirm, PIN) | eigene Anmeldung dieser App über den gemeinsamen Anmeldeschirm (Karte oder Rosenweg-Konto, keine PIN); bis zu 20 Sitzungen pro Person |
+| Zugang | von Rosenweg Gerät nach dem Anmelden, je Gerät und Person | eigener fester SIP-Zugang dieses Handys von der Anlage |
 | Verbindung | im Rosenweg-WLAN | SIP über TLS, auch über 3G/4G/5G und VPN |
-| Android-Telefon | Standard-Telefon-App mit eigenem Anrufkonto für die persönliche Nummer | mischt sich **nicht** ein: keine Standard-App, kein Anrufkonto, sieht keine Mobilfunk-Anrufe, schreibt nichts ins Anrufprotokoll |
+| Android-Telefon | Standard-Telefon-App mit eigenem Anrufkonto für die persönliche Nummer | **nicht** im Android-Telefonie-Framework, nur Rosenweg-Telefonie in der App: keine Standard-App, kein Anrufkonto, sieht keine Mobilfunk-Anrufe, schreibt nichts ins Anrufprotokoll |
 | Anrufe | Android-Anruffenster | eigenes Anruffenster und Vollbild-Benachrichtigung in der App |
 | Einstellungen | gehören der Person, liegen über Rosenweg Gerät auf der Anlage | bleiben auf dem Handy |
 | Abmelden | Konto abgemeldet, Anrufliste gelöscht | im Menü oder im Portal; die App fragt regelmässig nach, ob der Zugang noch gilt |
@@ -85,7 +86,7 @@ Auf einem geteilten Telefon gibt es zwei SIP-Konten: Rosenweg Gerät registriert
 | `…/activities/EigenerAnrufActivity.kt`, `helpers/EigenerAnruf.kt`, `Klingeln.kt` | Anrufe ganz in der App (eigenes Handy) |
 | `…/receivers/RosenwegSipEmpfaenger.kt` | Wechsel des Zugangs von Rosenweg Gerät (`SIP_PERSON_GEAENDERT`, `ABGEMELDET`) |
 | `sipdroid/` | SIP-Kern aus Sipdroid als Gradle-Modul `:sipdroid`, Pakete `org.sipdroid.*` unverändert, native Codecs per NDK |
-| [commons-rosenweg](https://github.com/Rosenweg/commons-rosenweg) | Fossify Commons in der Rosenweg-Fassung und `ch.rosenweg4303:updater` |
+| [commons-rosenweg](https://github.com/Rosenweg/commons-rosenweg) | Fossify Commons in der Rosenweg-Fassung, gemeinsamer Anmeldeschirm (Cloud) und `ch.rosenweg4303:updater` |
 | `assets/logo/` | Logo aus dem Baukasten von rosenweg-basis: Turm, Weg und Rose mit Hörer-Plakette, dazu ein monochromes Designsymbol (Android 13+) |
 
 Paketname `ch.rosenweg4303.phone`. Die Hinweise nach Sipdroids ADDITIONAL_TERMS stehen im Menü unter „Über Android SIP / Sipdroid“.
