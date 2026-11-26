@@ -24,6 +24,7 @@
     <ID>EmptyFunctionBlock:RecentCallsAdapter.kt$RecentCallsAdapter${}</ID>
     <ID>EmptyFunctionBlock:SpeedDialAdapter.kt$SpeedDialAdapter${}</ID>
     <ID>LargeClass:CallActivity.kt$CallActivity : SimpleActivity</ID>
+    <ID>LargeClass:MainActivity.kt$MainActivity : SimpleActivity</ID>
     <ID>LongMethod:CallActivity.kt$CallActivity$@SuppressLint("ClickableViewAccessibility") private fun handleSwipe()</ID>
     <ID>LongMethod:RecentCallsAdapter.kt$RecentCallsAdapter.RecentCallViewHolder$fun bind(call: RecentCall)</ID>
     <ID>LongMethod:RecentsHelper.kt$RecentsHelper$@SuppressLint("NewApi") private fun getRecents( contacts: List&lt;Contact&gt;, selection: String? = null, selectionParams: Array&lt;String&gt;? = null, ): List&lt;RecentCall&gt;</ID>
@@ -77,16 +78,13 @@
     <ID>MagicNumber:RosenwegAnmeldung.kt$RosenwegAnmeldung$12000</ID>
     <ID>MagicNumber:RosenwegAnmeldung.kt$RosenwegAnmeldung$15000</ID>
     <ID>MagicNumber:RosenwegAnmeldung.kt$RosenwegAnmeldung$200</ID>
-    <ID>MagicNumber:RosenwegAnmeldung.kt$RosenwegAnmeldung$24</ID>
     <ID>MagicNumber:RosenwegAnmeldung.kt$RosenwegAnmeldung$400</ID>
     <ID>MagicNumber:RosenwegAnmeldung.kt$RosenwegAnmeldung$401</ID>
-    <ID>MagicNumber:RosenwegAnmeldung.kt$RosenwegAnmeldung$48</ID>
     <ID>MagicNumber:RosenwegAnmeldung.kt$RosenwegAnmeldung$8000</ID>
     <ID>MagicNumber:Vollbildrecht.kt$Vollbildrecht$34</ID>
     <ID>MaxLineLength:AnlageVerlauf.kt$AnlageVerlauf$kotlin.math.abs(it.startTS - a.startTS) &lt; 120_000 &amp;&amp; PhoneNumberUtils.compare(it.phoneNumber, a.phoneNumber)</ID>
     <ID>MaxLineLength:AnlageVerlauf.kt$AnlageVerlauf$val a = RosenwegAnmeldung.anlageVerlauf(context) ?: return privatCache?.second?.let { mitKontakten(it, contacts) } ?: emptyList()</ID>
     <ID>MaxLineLength:AnlageVerlauf.kt$AnlageVerlauf$val beginn = try { format.parse(o.optString("beginn"))?.time } catch (e: Exception) { null } ?: return@mapNotNull null</ID>
-    <ID>MaxLineLength:AnmeldungActivity.kt$AnmeldungActivity$startActivity(Intent(app, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_NEW_TASK))</ID>
     <ID>MaxLineLength:AudioRoute.kt$AudioRoute$WIRED_OR_EARPIECE : AudioRoute</ID>
     <ID>MaxLineLength:Betriebsart.kt$Betriebsart$if (geaendert &gt; 0) Log.i(TAG, (if (geteilt) "geteiltes Telefon" else "privates Handy") + ": $geaendert Bausteine umgestellt")</ID>
     <ID>MaxLineLength:Betriebsart.kt$Betriebsart$val soll = if (geteilt) PackageManager.COMPONENT_ENABLED_STATE_DEFAULT else PackageManager.COMPONENT_ENABLED_STATE_DISABLED</ID>
@@ -203,7 +201,6 @@
     <ID>NestedBlockDepth:RecentsHelper.kt$RecentsHelper$@SuppressLint("NewApi") private fun getRecents( contacts: List&lt;Contact&gt;, selection: String? = null, selectionParams: Array&lt;String&gt;? = null, ): List&lt;RecentCall&gt;</ID>
     <ID>SwallowedException:AnlageVerlauf.kt$AnlageVerlauf$e: Exception</ID>
     <ID>SwallowedException:AnlageVerlauf.kt$AnlageVerlauf$e: SecurityException</ID>
-    <ID>SwallowedException:AnmeldungActivity.kt$AnmeldungActivity$e: Exception</ID>
     <ID>SwallowedException:Betriebsart.kt$Betriebsart$e: Exception</ID>
     <ID>SwallowedException:CallActivity.kt$CallActivity$e: Exception</ID>
     <ID>SwallowedException:CallContactHelper.kt$e: Exception</ID>
@@ -212,14 +209,15 @@
     <ID>SwallowedException:EigenerAnruf.kt$EigenerAnruf$e: Exception</ID>
     <ID>SwallowedException:FastScrollerView.kt$e: IndexOutOfBoundsException</ID>
     <ID>SwallowedException:Klingeln.kt$Klingeln$e: Exception</ID>
+    <ID>SwallowedException:MainActivity.kt$MainActivity$e: Exception</ID>
     <ID>SwallowedException:PersoenlichesKonto.kt$PersoenlichesKonto$e: Exception</ID>
     <ID>SwallowedException:PersoenlichesKonto.kt$PersoenlichesKonto$e: SecurityException</ID>
     <ID>SwallowedException:RecentsHelper.kt$e: Exception</ID>
     <ID>SwallowedException:RosenwegAnmeldung.kt$RosenwegAnmeldung$e: Exception</ID>
-    <ID>ThrowsCount:RosenwegAnmeldung.kt$RosenwegAnmeldung$fun abschliessen(c: Context, antwort: Uri): String</ID>
+    <ID>SwallowedException:RosenwegAnmeldung.kt$RosenwegAnmeldung$e: java.io.IOException</ID>
+    <ID>ThrowsCount:RosenwegAnmeldung.kt$RosenwegAnmeldung$fun zugangHolen(c: Context): String</ID>
     <ID>TooGenericExceptionCaught:AnlageEinstellungen.kt$AnlageEinstellungen$e: Exception</ID>
     <ID>TooGenericExceptionCaught:AnlageVerlauf.kt$AnlageVerlauf$e: Exception</ID>
-    <ID>TooGenericExceptionCaught:AnmeldungActivity.kt$AnmeldungActivity$e: Exception</ID>
     <ID>TooGenericExceptionCaught:Betriebsart.kt$Betriebsart$e: Exception</ID>
     <ID>TooGenericExceptionCaught:CallActivity.kt$CallActivity$e: Exception</ID>
     <ID>TooGenericExceptionCaught:CallContactHelper.kt$e: Exception</ID>
