@@ -809,6 +809,14 @@ public class SipProvider implements Configurable, TransportListener,
 	 */
 	private ConnectionIdentifier sendMessage(Message msg, String proto,
 			IpAddress dest_ipaddr, int dest_port, int ttl) {
+		// Rosenweg (26.11.2026): TLS laeuft in diesem Kern ueber TcpTransport/TcpSocket (die
+		// Verbindung heisst intern "tcp"). Nachrichten der Anlage tragen aber "Via: SIP/2.0/TLS";
+		// Antworten darauf (z.B. 200 OK auf Qualify-OPTIONS) wurden als "Unsupported protocol
+		// (tls)" verworfen -> Kontakt "Unavail" -> Asterisk waehlt das Handy nicht mehr an.
+		// Darum TLS wie TCP behandeln: die bestehende Verbindung zur Anlage benutzen.
+		// Vorerst nur auf privaten Handys (Stefan: geteilte Telefone unveraendert lassen).
+		if (PROTO_TLS.equals(proto) && !org.sipdroid.sipua.ui.Receiver.telecomErlaubt(org.sipdroid.sipua.ui.Receiver.mContext))
+			proto = PROTO_TCP;
 		ConnectionIdentifier conn_id = new ConnectionIdentifier(proto,
 				dest_ipaddr, dest_port);
 		if (log_all_packets || msg.getLength() > MIN_MESSAGE_LENGTH)

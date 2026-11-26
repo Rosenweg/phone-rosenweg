@@ -136,6 +136,7 @@ class MainActivity : SimpleActivity() {
             privatEinrichten()
             rolleZurueckgeben()
         }
+        berechtigungsHinweis()
         val properPrimaryColor = getProperPrimaryColor()
         val dialpadIcon = resources.getColoredDrawableWithColor(R.drawable.ic_dialpad_vector, properPrimaryColor.getContrastColor())
         binding.mainDialpadButton.setImageDrawable(dialpadIcon)
@@ -319,6 +320,39 @@ class MainActivity : SimpleActivity() {
     }
 
     private var rechteGefragt = false
+    private var hinweis: Snackbar? = null
+
+    /**
+     * Rosenweg (26.11.2026): eigenes Handy, angemeldet - solange etwas fehlt, ohne das ein
+     * Rosenweg-Anruf nicht klingelt bzw. nicht als Anrufschirm erscheint, bleibt unten ein
+     * deutlicher Hinweis mit Knopf zur passenden Einstellung (nicht nur einmal gefragt).
+     * Reihenfolge: Benachrichtigungen, Vollbild (Android 14+), Akku-Ausnahme.
+     */
+    private fun berechtigungsHinweis() {
+        val fehlt = if (Betriebsart.privat(this) &&
+            (PersoenlichesKonto.privatNummer(this) != null || PersoenlichesKonto.manuellDa(this))
+        ) org.fossify.phone.helpers.EigenerAnruf.fehlendesRecht(this) else null
+        if (fehlt == null) {
+            hinweis?.dismiss()
+            hinweis = null
+            return
+        }
+        hinweis?.dismiss()
+        hinweis = Snackbar.make(binding.mainHolder, fehlt.text, Snackbar.LENGTH_INDEFINITE)
+            .setAction("Einstellungen") {
+                try {
+                    startActivity(fehlt.einstellung)
+                } catch (e: Exception) {
+                    showErrorToast(e)
+                }
+            }.apply {
+                setBackgroundTint(getColor(R.color.md_red_700))
+                setTextColor(android.graphics.Color.WHITE)
+                setActionTextColor(android.graphics.Color.WHITE)
+                setTextMaxLines(4)
+                show()
+            }
+    }
 
     /**
      * Privates Handy, angemeldet: einmal pro Start die Rechte fuer Rosenweg-Anrufe in der App

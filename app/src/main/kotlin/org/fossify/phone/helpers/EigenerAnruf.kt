@@ -543,6 +543,43 @@ object EigenerAnruf : Receiver.AnrufBeobachter {
         }
     }
 
+    // ---------------------------------------------------------------- Rechte
+
+    class FehlendesRecht(val text: String, val einstellung: Intent)
+
+    /**
+     * Was fehlt, damit ein Rosenweg-Anruf klingelt und der Anrufschirm erscheint? null = alles da.
+     * Benachrichtigungen (POST_NOTIFICATIONS bzw. App-Benachrichtigungen aus, Kanal "Eingehende
+     * Rosenweg-Anrufe" aus), Vollbild-Recht (Android 14+), Akku-Ausnahme.
+     */
+    fun fehlendesRecht(c: Context): FehlendesRecht? {
+        val nm = c.getSystemService(NotificationManager::class.java)
+        val paket = Uri.fromParts("package", c.packageName, null)
+        val benachrichtigungen = Intent(android.provider.Settings.ACTION_APP_NOTIFICATION_SETTINGS)
+            .putExtra(android.provider.Settings.EXTRA_APP_PACKAGE, c.packageName)
+        val kanalAus = nm?.getNotificationChannel(KANAL_EINGEHEND)?.importance == NotificationManager.IMPORTANCE_NONE
+        if (nm == null || !nm.areNotificationsEnabled() || kanalAus) {
+            return FehlendesRecht(
+                "Ohne Benachrichtigungen klingeln Rosenweg-Anrufe nicht. Bitte für Rosenweg Telefon erlauben.",
+                benachrichtigungen
+            )
+        }
+        if (Build.VERSION.SDK_INT >= 34 && !nm.canUseFullScreenIntent()) {
+            return FehlendesRecht(
+                "Ohne „Vollbild-Benachrichtigungen“ erscheint ein Rosenweg-Anruf bei gesperrtem Handy nicht als Anrufschirm. Bitte erlauben.",
+                Intent(android.provider.Settings.ACTION_MANAGE_APP_USE_FULL_SCREEN_INTENT, paket)
+            )
+        }
+        val pm = c.getSystemService(android.os.PowerManager::class.java)
+        if (pm != null && !pm.isIgnoringBatteryOptimizations(c.packageName)) {
+            return FehlendesRecht(
+                "Ohne Ausnahme von der Akku-Optimierung beendet Android Rosenweg Telefon – Anrufe kommen dann nicht an.",
+                Intent(android.provider.Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS, paket)
+            )
+        }
+        return null
+    }
+
     // ---------------------------------------------------------------- Nummer & Kontakt
 
     /** "Name" <sip:310201@host;x> / sip:310201@host / 310201 -> 310201 */
