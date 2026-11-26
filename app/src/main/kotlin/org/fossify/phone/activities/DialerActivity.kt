@@ -20,6 +20,12 @@ class DialerActivity : SimpleActivity() {
 
         if (intent.action == Intent.ACTION_CALL && intent.data != null) {
             callNumber = intent.data
+            // Rosenweg: privates Handy (der CALL-Eingang ist dort aus, nur zur Sicherheit):
+            // nie Standard-Telefon-App werden wollen, nie ueber Telecom waehlen
+            if (org.fossify.phone.helpers.Betriebsart.privat(this)) {
+                finish()
+                return
+            }
 
             // make sure Simple Dialer is the default Phone app before initiating an outgoing call
             if (!isDefaultDialer()) {

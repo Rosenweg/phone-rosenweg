@@ -296,7 +296,10 @@ class DialpadActivity : SimpleActivity() {
         val len = text.length
         if (len > 8 && text.startsWith("*#*#") && text.endsWith("#*#*")) {
             val secretCode = text.substring(4, text.length - 4)
-            if (isOreoPlus()) {
+            if (org.fossify.phone.helpers.Betriebsart.privat(this)) {
+                // Rosenweg: privates Handy - Geheimcodes gehoeren der Telefon-App des Handys
+                return
+            } else if (isOreoPlus()) {
                 if (isDefaultDialer()) {
                     getSystemService(TelephonyManager::class.java)?.sendDialerSpecialCode(secretCode)
                 } else {

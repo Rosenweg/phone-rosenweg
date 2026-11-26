@@ -41,6 +41,7 @@ import org.fossify.phone.fragments.FavoritesFragment
 import org.fossify.phone.fragments.MyViewPagerFragment
 import org.fossify.phone.fragments.RecentsFragment
 import org.fossify.phone.helpers.AnlageEinstellungen
+import org.fossify.phone.helpers.Betriebsart
 import org.fossify.phone.helpers.PersoenlichesKonto
 import org.fossify.phone.helpers.OPEN_DIAL_PAD_AT_LAUNCH
 import org.fossify.phone.helpers.RecentsHelper
@@ -74,7 +75,12 @@ class MainActivity : SimpleActivity() {
         EventBus.getDefault().register(this)
         launchedDialer = savedInstanceState?.getBoolean(OPEN_DIAL_PAD_AT_LAUNCH) ?: false
 
-        if (isDefaultDialer()) {
+        if (Betriebsart.privat(this)) {
+            // Rosenweg (26.11.2026): privates Handy - nicht Standard-Telefon-App werden, keine
+            // Anrufsperre-Rolle, kein "ueber anderen Apps"; nur Kontakte, Benachrichtigungen
+            // (Vollbild fuer eingehende Rosenweg-Anrufe) und das Mikrofon.
+            checkContactPermissions()
+        } else if (isDefaultDialer()) {
             checkContactPermissions()
 
             if (!config.wasOverlaySnackbarConfirmed && !Settings.canDrawOverlays(this)) {
@@ -102,7 +108,7 @@ class MainActivity : SimpleActivity() {
             launchSetDefaultDialerIntent()
         }
 
-        if (isQPlus() && (config.blockUnknownNumbers || config.blockHiddenNumbers)) {
+        if (isQPlus() && !Betriebsart.privat(this) && (config.blockUnknownNumbers || config.blockHiddenNumbers)) {
             setDefaultCallerIdApp()
         }
 
@@ -121,7 +127,15 @@ class MainActivity : SimpleActivity() {
         updateMenuColors()
         refreshMenuItems()   // Rosenweg: "Mit Rosenweg anmelden" / "Abmelden" nach dem Ruecksprung
         // einmal pro Start fragen (nicht bei jedem Zurueckkehren aus dem Dialog)
-        if (!akkuGefragt) akkuGefragt = org.fossify.phone.helpers.RosenwegAnmeldung.akkuAusnahmeErfragen(this)
+        var akkuOffen = false
+        if (!akkuGefragt) {
+            akkuGefragt = org.fossify.phone.helpers.RosenwegAnmeldung.akkuAusnahmeErfragen(this)
+            akkuOffen = akkuGefragt
+        }
+        if (!akkuOffen) {
+            privatEinrichten()
+            rolleZurueckgeben()
+        }
         val properPrimaryColor = getProperPrimaryColor()
         val dialpadIcon = resources.getColoredDrawableWithColor(R.drawable.ic_dialpad_vector, properPrimaryColor.getContrastColor())
         binding.mainDialpadButton.setImageDrawable(dialpadIcon)
@@ -302,6 +316,46 @@ class MainActivity : SimpleActivity() {
 
     private fun updateMenuColors() {
         binding.mainMenu.updateColors()
+    }
+
+    private var rechteGefragt = false
+
+    /**
+     * Privates Handy, angemeldet: einmal pro Start die Rechte fuer Rosenweg-Anrufe in der App
+     * (Benachrichtigungen/Vollbild fuer eingehende Anrufe, Mikrofon). Ohne Anmeldung nichts fragen.
+     */
+    private fun privatEinrichten() {
+        if (rechteGefragt || !Betriebsart.privat(this)) return
+        if (PersoenlichesKonto.privatNummer(this) == null && !PersoenlichesKonto.manuellDa(this)) return
+        rechteGefragt = true
+        handleFullScreenNotificationsPermission { granted ->
+            if (!granted) {
+                toast(org.fossify.commons.R.string.notifications_disabled)
+            }
+            handlePermission(PERMISSION_RECORD_AUDIO) { }
+        }
+    }
+
+    /**
+     * Frueher (bis v41) wurde Rosenweg Telefon auch auf privaten Handys Standard-Telefon-App.
+     * Die Rolle kann die App nicht selbst abgeben: einmal pro Start erklaeren, wie die
+     * Telefon-App des Handys wieder Standard wird.
+     */
+    private var rolleErklaert = false
+
+    private fun rolleZurueckgeben() {
+        if (rolleErklaert || !Betriebsart.privat(this)) return
+        if (!Betriebsart.haeltTelefonRolle(this) && !Betriebsart.haeltSperrRolle(this)) return
+        rolleErklaert = true
+        ConfirmationDialog(
+            this, message = Betriebsart.ROLLE_TEXT, positive = R.string.settings, negative = org.fossify.commons.R.string.later
+        ) {
+            try {
+                startActivity(Betriebsart.standardAppsEinstellung())
+            } catch (e: Exception) {
+                showErrorToast(e)
+            }
+        }
     }
 
     private fun checkContactPermissions() {

@@ -154,6 +154,13 @@ public class RtpStreamReceiver extends Thread {
 	}
 	
 	public static synchronized void ringback(boolean ringback) {
+		// Rosenweg: ohne Telecom (privates Handy) spielt Rosenweg Telefon den Freiton selbst
+		Receiver.AnrufBeobachter b = Receiver.beobachter;
+		if (b != null && Receiver.phoneAccountHandle == null) {
+			try {
+				b.freiton(ringback);
+			} catch (Throwable ignored) {}
+		}
 	}
 	
 	public static void adjust(int keyCode,boolean down,boolean show) {

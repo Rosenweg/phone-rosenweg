@@ -140,52 +140,94 @@ import org.zoolu.sip.provider.SipProvider;
 		 */
 		public static final String ACCOUNT_LABEL = "Rosenweg persönlich";
 		/**
-		 * Rosenweg (Stefan 25.11.2026): ab Android 11 ein selbst verwaltetes Konto
-		 * (CAPABILITY_SELF_MANAGED). Das muss niemand in "Anrufkonten" freischalten; weil
-		 * Rosenweg Telefon die Standard-Telefon-App ist und INCLUDE_SELF_MANAGED_CALLS
-		 * erklaert, laufen die Anrufe trotzdem durch ihr Anruffenster und (LOG_SELF_MANAGED)
-		 * in die Anrufliste. Darunter das fruehere verwaltete Konto (muss freigeschaltet werden).
+		 * Rosenweg (Stefan 26.11.2026): Telecom (Anrufkonto, ConnectionService, Anruffenster des
+		 * Systems) NUR auf geteilten Telefonen, also wenn Rosenweg Geraet installiert ist. Dort
+		 * schaltet das Einrichtungsskript das verwaltete Konto frei, Rosenweg Telefon ist die
+		 * Standard-Telefon-App. Auf privaten Handys mischt sich Rosenweg Telefon nicht ins
+		 * Android-Telefon ein: kein Anrufkonto (auch kein selbst verwaltetes), Anrufe laufen ganz
+		 * in der App (beobachter = EigenerAnruf in Rosenweg Telefon).
 		 */
-		/**
-		 * Selbst verwaltet nur auf privaten Handys (Stefan 25.11.2026: "abhaengig von der App
-		 * Geraet"): ist Rosenweg Geraet installiert (geteiltes, verwaltetes Telefon), bleibt
-		 * das verwaltete Konto - dort schaltet es das Einrichtungsskript frei.
-		 */
-		public static boolean selbstVerwaltet(Context c) {
-			if (android.os.Build.VERSION.SDK_INT < 30 || c == null) return false;
+		public static boolean telecomErlaubt(Context c) {
+			if (c == null) return false;
 			try {
-				return c.getPackageManager().resolveContentProvider("ch.rosenweg4303.telefon.anlage", 0) == null;
+				return c.getPackageManager().resolveContentProvider("ch.rosenweg4303.telefon.anlage", 0) != null;
 			} catch (Exception e) {
-				return true;
+				return false;
 			}
 		}
 
+		/** Kennung des (verwalteten) Anrufkontos auf geteilten Telefonen. */
+		public static final String KONTO_ID = "SipdroidCallProvider";
+		/** Fruehere Kennungen: Sipdroid-Original und das selbst verwaltete Konto (v33-v41, privat). */
+		private static final String[] ALTE_KONTEN = { "SipdroidAccount", "RosenwegSelbst" };
+
 		public static String kontoId(Context c) {
-			return selbstVerwaltet(c) ? "RosenwegSelbst" : "SipdroidCallProvider";
+			return KONTO_ID;
 		}
+
+		/**
+		 * Rosenweg: Anrufe ohne Telecom (privates Handy). Der SIP-Kern meldet jeden Zustandswechsel
+		 * hierher, solange kein Anrufkonto besteht (phoneAccountHandle == null). Aufruf im SIP-Thread.
+		 */
+		public interface AnrufBeobachter {
+			/** state = UserAgent.UA_STATE_*, caller = SIP-Adresse/Nummer, name = Anzeigename oder null. */
+			void zustand(int state, String caller, String name);
+			/** Gegenstelle klingelt (180 ohne Early Media): Freiton selbst spielen. */
+			void freiton(boolean an);
+			/** Benachrichtigung fuer den Anrufdienst (Vordergrund), null = Standard. */
+			Notification benachrichtigung();
+		}
+		public static volatile AnrufBeobachter beobachter = null;
+
 		/** Rosenweg: Name der Person fuer die Kontobeschreibung (setzt Rosenweg Telefon). */
 		public static volatile String personName = null;
 		public static android.telecom.PhoneAccountHandle phoneAccountHandle = null;
 		public static String telecomSetupError = null;
+		/** null = noch nicht entschieden, sonst der zuletzt angewandte Modus (Telecom ja/nein). */
+		private static Boolean telecomZuletzt = null;
+
+		/**
+		 * Alle Anrufkonten dieser App bei Telecom austragen (privates Handy, auch die von frueheren
+		 * Versionen). Danach erscheint Rosenweg Telefon nirgends mehr in den Anrufkonten.
+		 */
+		public static void telecomAbbauen(Context context) {
+			phoneAccountHandle = null;
+			if (android.os.Build.VERSION.SDK_INT < 26 || context == null) return;
+			try {
+				android.telecom.TelecomManager tm = (android.telecom.TelecomManager) context.getSystemService(Context.TELECOM_SERVICE);
+				if (tm == null) return;
+				android.content.ComponentName cn = new android.content.ComponentName(context, SipConnectionService.class);
+				tm.unregisterPhoneAccount(new android.telecom.PhoneAccountHandle(cn, KONTO_ID));
+				for (String alt : ALTE_KONTEN) {
+					tm.unregisterPhoneAccount(new android.telecom.PhoneAccountHandle(cn, alt));
+				}
+				Log.i("SipUA", "Anrufkonten ausgetragen (privates Handy, ohne Telecom)");
+			} catch (Throwable e) {
+				Log.w("SipUA", "telecomAbbauen: " + e.getMessage());
+			}
+		}
 
 		public static void initTelecom(Context context) {
 			if (android.os.Build.VERSION.SDK_INT >= 26) {
+				if (!telecomErlaubt(context)) {
+					// privates Handy: einmal pro Prozess (oder nach einem Wechsel) austragen
+					if (!Boolean.FALSE.equals(telecomZuletzt)) telecomAbbauen(context);
+					telecomZuletzt = Boolean.FALSE;
+					phoneAccountHandle = null;
+					return;
+				}
+				telecomZuletzt = Boolean.TRUE;
 				try {
 					android.telecom.TelecomManager telecomManager = (android.telecom.TelecomManager) context.getSystemService(Context.TELECOM_SERVICE);
 					android.content.ComponentName componentName = new android.content.ComponentName(context, SipConnectionService.class);
-					
-					try {
-						telecomManager.unregisterPhoneAccount(new android.telecom.PhoneAccountHandle(componentName, "SipdroidAccount"));
-					} catch (Exception ignored) {}
-					// Rosenweg: das jeweils andere Konto weg (Selbstverwaltung laesst sich an
-					// einem bestehenden Konto nicht umstellen, darum zwei Kennungen)
-					String id = kontoId(context);
-					String anderes = "RosenwegSelbst".equals(id) ? "SipdroidCallProvider" : "RosenwegSelbst";
-					try {
-						telecomManager.unregisterPhoneAccount(new android.telecom.PhoneAccountHandle(componentName, anderes));
-					} catch (Exception ignored) {}
 
-					phoneAccountHandle = new android.telecom.PhoneAccountHandle(componentName, id);
+					for (String alt : ALTE_KONTEN) {
+						try {
+							telecomManager.unregisterPhoneAccount(new android.telecom.PhoneAccountHandle(componentName, alt));
+						} catch (Exception ignored) {}
+					}
+
+					phoneAccountHandle = new android.telecom.PhoneAccountHandle(componentName, KONTO_ID);
 					updatePhoneAccount(context);
 				} catch (Throwable e) {
 					telecomSetupError = android.util.Log.getStackTraceString(e);
@@ -210,7 +252,7 @@ import org.zoolu.sip.provider.SipProvider;
 				if (tm == null) {
 					return;
 				}
-				
+
 				boolean isAnyRegistered = false;
 				if (mSipdroidEngine != null) {
 					for (int i = 0; i < org.sipdroid.sipua.SipdroidEngine.LINES; i++) {
@@ -220,7 +262,7 @@ import org.zoolu.sip.provider.SipProvider;
 						}
 					}
 				}
-				
+
 				String callerId = getActiveCallerId(context);
 				String shortDesc;
 				if (callerId != null && !callerId.isEmpty() && !callerId.equals("Android SIP Calls")) {
@@ -228,28 +270,20 @@ import org.zoolu.sip.provider.SipProvider;
 				} else {
 					shortDesc = isAnyRegistered ? ACCOUNT_LABEL : ACCOUNT_LABEL + " (Offline)";
 				}
-				
+
 				android.telecom.PhoneAccount.Builder builder = android.telecom.PhoneAccount.builder(phoneAccountHandle, ACCOUNT_LABEL)
 						.setShortDescription(shortDesc)
 						.addSupportedUriScheme("sip")
 						.addSupportedUriScheme("sipdroid")
 						.addSupportedUriScheme("tel")
 						.setIcon(android.graphics.drawable.Icon.createWithResource(context, context.getApplicationInfo().icon));
-				
-				if ("RosenwegSelbst".equals(phoneAccountHandle.getId())) {
-					// immer selbst verwaltet (umschalten geht nicht); offline lehnt
-					// SipConnectionService gehende Anrufe ab, PersoenlichesKonto waehlt es dann nicht
-					builder.setCapabilities(android.telecom.PhoneAccount.CAPABILITY_SELF_MANAGED);
-					android.os.Bundle ex = new android.os.Bundle();
-					ex.putBoolean(android.telecom.PhoneAccount.EXTRA_LOG_SELF_MANAGED_CALLS, true);
-					ex.putBoolean(android.telecom.PhoneAccount.EXTRA_ADD_SELF_MANAGED_CALLS_TO_INCALLSERVICE, true);
-					builder.setExtras(ex);
-				} else if (isAnyRegistered) {
+
+				if (isAnyRegistered) {
 					builder.setCapabilities(android.telecom.PhoneAccount.CAPABILITY_CALL_PROVIDER);
 				} else {
 					builder.setCapabilities(0);
 				}
-				
+
 				tm.registerPhoneAccount(builder.build());
 				Log.i("SipUA", "Updated PhoneAccount: Android SIP (" + shortDesc + ") [capabilities=" + (isAnyRegistered ? "CALL_PROVIDER" : "0") + "]");
 			} catch (Throwable e) {
@@ -290,6 +324,15 @@ import org.zoolu.sip.provider.SipProvider;
 			return mSipdroidEngine;
 		}
 		
+		/** Rosenweg: Anzeigename aus dem From-Header ("Name" <sip:...>), sonst null. */
+		static String anzeigename(String caller) {
+			if (caller == null) return null;
+			int a = caller.indexOf('"'), e = caller.lastIndexOf('"');
+			if (a < 0 || e <= a) return null;
+			String n = caller.substring(a + 1, e).trim();
+			return n.length() > 0 ? n : null;
+		}
+
 		public static Ringtone oRingtone;
 		static PowerManager.WakeLock wl;
 				
@@ -310,6 +353,15 @@ import org.zoolu.sip.provider.SipProvider;
 				if (state != UserAgent.UA_STATE_IDLE)
 					call_end_reason = -1;
 				call_state = state;
+				// Rosenweg: ohne Anrufkonto (privates Handy) fuehrt die App den Anruf selbst
+				AnrufBeobachter beob = beobachter;
+				if (beob != null && phoneAccountHandle == null) {
+					try {
+						beob.zustand(state, caller, state == UserAgent.UA_STATE_INCOMING_CALL ? anzeigename(caller) : null);
+					} catch (Throwable t) {
+						Log.e("SipUA", "beobachter: " + t.getMessage(), t);
+					}
+				}
 				switch(call_state)
 				{
 				case UserAgent.UA_STATE_INCOMING_CALL:
@@ -506,7 +558,9 @@ import org.zoolu.sip.provider.SipProvider;
 						NotificationChannel chan = new NotificationChannel("call_service", "Active Call", NotificationManager.IMPORTANCE_LOW);
 						nm.createNotificationChannel(chan);
 					}
-					Notification notification = new NotificationCompat.Builder(mContext, "call_service")
+					AnrufBeobachter beob = beobachter;
+					Notification notification = (beob != null && phoneAccountHandle == null) ? beob.benachrichtigung() : null;
+					if (notification == null) notification = new NotificationCompat.Builder(mContext, "call_service")
 							.setSmallIcon(mContext.getApplicationInfo().icon)
 							.setContentTitle("Rosenweg Telefon")
 							.setContentText("Anruf")

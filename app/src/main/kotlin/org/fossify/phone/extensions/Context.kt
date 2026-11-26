@@ -59,6 +59,8 @@ fun Context.getAvailableSIMCardLabels(): List<SIMAccount> {
 
 @SuppressLint("MissingPermission")
 fun Context.areMultipleSIMsAvailable(): Boolean {
+    // Rosenweg: privates Handy - Rosenweg Telefon waehlt nie eine SIM (nur die Rosenweg-Anlage)
+    if (org.fossify.phone.helpers.Betriebsart.privat(this)) return false
     return try {
         telecomManager.callCapablePhoneAccounts.size > 1
     } catch (ignored: Exception) {

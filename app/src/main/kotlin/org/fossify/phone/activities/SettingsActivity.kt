@@ -11,6 +11,7 @@ import org.fossify.commons.activities.ManageBlockedNumbersActivity
 import org.fossify.commons.dialogs.ChangeDateTimeFormatDialog
 import org.fossify.commons.dialogs.RadioGroupDialog
 import org.fossify.commons.extensions.baseConfig
+import org.fossify.commons.extensions.beGone
 import org.fossify.commons.extensions.beVisibleIf
 import org.fossify.commons.extensions.getFontSizeText
 import org.fossify.commons.extensions.getProperPrimaryColor
@@ -114,6 +115,7 @@ class SettingsActivity : SimpleActivity() {
         setupAlwaysShowFullscreen()
         setupCallsExport()
         setupCallsImport()
+        privatAusblenden()
         updateTextColors(binding.settingsHolder)
 
         binding.apply {
@@ -147,7 +149,28 @@ class SettingsActivity : SimpleActivity() {
 
     private fun refreshMenuItems() {
         binding.settingsToolbar.menu.apply {
-            findItem(R.id.calling_accounts).isVisible = canLaunchAccountsConfiguration()
+            findItem(R.id.calling_accounts).isVisible =
+                canLaunchAccountsConfiguration() && !org.fossify.phone.helpers.Betriebsart.privat(this@SettingsActivity)
+        }
+    }
+
+    /**
+     * Rosenweg: privates Handy - was nur fuer die Standard-Telefon-App gilt (Sperrliste des
+     * Systems, Anrufprotokoll exportieren/importieren, Wischen/Vollbild im System-Anruffenster),
+     * ausblenden. Das Rosenweg-Anruffenster nimmt per Antippen an, Vollbild regelt Android.
+     */
+    private fun privatAusblenden() {
+        if (!org.fossify.phone.helpers.Betriebsart.privat(this)) return
+        binding.apply {
+            arrayOf(
+                settingsManageBlockedNumbersHolder,
+                settingsDisableSwipeToAnswerHolder,
+                settingsAlwaysShowFullscreenHolder,
+                settingsMigrationDivider,
+                settingsMigrationSectionLabel,
+                settingsExportCallsHolder,
+                settingsImportCallsHolder,
+            ).forEach { it.beGone() }
         }
     }
 
