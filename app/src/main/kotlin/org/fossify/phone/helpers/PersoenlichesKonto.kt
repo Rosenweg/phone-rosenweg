@@ -30,6 +30,7 @@ import java.util.concurrent.Executors
  *
  * Privates Telefon (keine Geraete-App): "Mit Rosenweg anmelden" (RosenwegAnmeldung, fester
  * Zugang <nummer>-p<id>) oder Server, Benutzer und Passwort von Hand (Menue "SIP-Konto").
+ * Dort ohne Android-Telefon (Betriebsart): kein Anrufkonto, Anrufe in der App (EigenerAnruf).
  *
  * Nie den Zugang loggen.
  */
@@ -69,10 +70,8 @@ object PersoenlichesKonto {
      */
     fun fuerAnruf(ctx: Context, nummer: String): PhoneAccountHandle? {
         if (istNotruf(ctx, nummer)) return null
-        if (Receiver.selbstVerwaltet(ctx)) {
-            // selbst verwaltet: steht nie in callCapablePhoneAccounts - registriert?
-            return if (Receiver.mSipdroidEngine?.isRegistered == true) handle(ctx) else null
-        }
+        // privates Handy: kein Anrufkonto bei Telecom (Anrufe laufen ueber EigenerAnruf)
+        if (!geraetDa(ctx)) return null
         return try {
             val tm = ctx.getSystemService(TelecomManager::class.java)
             val eigenes = handle(ctx)
@@ -82,17 +81,7 @@ object PersoenlichesKonto {
         }
     }
 
-    private val NOTRUFE = setOf("112", "117", "118", "143", "144", "147", "911", "999", "000", "110")
-
-    private fun istNotruf(ctx: Context, nummer: String): Boolean {
-        val n = nummer.filter { it.isDigit() || it == '+' }
-        if (n in NOTRUFE) return true
-        return try {
-            ctx.getSystemService(TelephonyManager::class.java).isEmergencyNumber(n)
-        } catch (e: Exception) {
-            false
-        }
-    }
+    private fun istNotruf(ctx: Context, nummer: String): Boolean = EigenerAnruf.istNotruf(ctx, nummer)
 
     /** Beim Start der App, nach An-/Abmelden und wenn die Geraete-App einen Wechsel meldet. */
     fun abgleichen(ctx: Context, grund: String) {
@@ -121,6 +110,12 @@ object PersoenlichesKonto {
     }
 
     private fun anruflisteLoeschen(app: Context) {
+        // privates Handy: nur die eigene Liste - das Anrufprotokoll des Handys gehoert der Person
+        if (!geraetDa(app)) {
+            EigeneAnrufliste.leeren(app)
+            Log.i(TAG, "eigene Anrufliste geloescht")
+            return
+        }
         try {
             val n = app.contentResolver.delete(android.provider.CallLog.Calls.CONTENT_URI, null, null)
             Log.i(TAG, "Anrufliste geloescht ($n)")
@@ -207,6 +202,7 @@ object PersoenlichesKonto {
 
     class Nachfrage : android.content.BroadcastReceiver() {
         override fun onReceive(context: Context, intent: android.content.Intent) {
+            Betriebsart.anwenden(context)
             if (!geraetDa(context) && privatNummer(context) != null) abgleichen(context, "nachfrage")
         }
     }
@@ -247,6 +243,9 @@ object PersoenlichesKonto {
             prefs(app).edit().remove(PRIVAT).remove(PRIVAT_NUMMER).commit()
         }.get()
     }
+
+    /** Privat: SIP-Zugang von Hand eingerichtet (Menue "SIP-Konto von Hand")? */
+    fun manuellDa(ctx: Context): Boolean = manuellEingerichtet(ctx.applicationContext)
 
     private fun manuellEingerichtet(app: Context): Boolean {
         val p = prefs(app)
@@ -318,8 +317,8 @@ object PersoenlichesKonto {
         } catch (e: Exception) {
             Log.w(TAG, "Dienst stoppen: ${e.javaClass.simpleName}")
         }
-        // Konto bleibt bei Telecom eingetragen (sonst ginge die Freigabe per adb verloren),
-        // aber ohne CALL_PROVIDER: nicht waehlbar.
+        // Geteiltes Telefon: Konto bleibt bei Telecom eingetragen (sonst ginge die Freigabe per
+        // adb verloren), aber ohne CALL_PROVIDER: nicht waehlbar. Privat: gibt es keins.
         Receiver.updatePhoneAccount(app)
         if (hatte) Log.i(TAG, "persoenliches Konto abgemeldet und vergessen")
     }

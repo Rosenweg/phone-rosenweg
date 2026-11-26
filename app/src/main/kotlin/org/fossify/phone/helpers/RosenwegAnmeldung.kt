@@ -130,6 +130,8 @@ object RosenwegAnmeldung {
             }
         }
         PersoenlichesKonto.privatVergessen(c)
+        // Grundregel: beim Abmelden die lokale Anrufliste (Rosenweg-Anrufe) loeschen
+        EigeneAnrufliste.leeren(c)
     }
 
     /**

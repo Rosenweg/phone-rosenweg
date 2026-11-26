@@ -5,7 +5,6 @@ import android.telecom.CallAudioState
 import android.telecom.InCallService
 import org.fossify.commons.extensions.canUseFullScreenIntent
 import org.fossify.phone.helpers.Vollbildrecht
-import org.fossify.phone.helpers.Klingeln
 import org.fossify.commons.extensions.hasPermission
 import org.fossify.commons.helpers.PERMISSION_POST_NOTIFICATIONS
 import org.fossify.phone.activities.CallActivity
@@ -25,7 +24,6 @@ class CallService : InCallService() {
     private val callListener = object : Call.Callback() {
         override fun onStateChanged(call: Call, state: Int) {
             super.onStateChanged(call, state)
-            if (state != Call.STATE_RINGING) Klingeln.stop()
             if (state == Call.STATE_DISCONNECTED || state == Call.STATE_DISCONNECTING) {
                 callNotificationManager.cancelNotification()
             } else {
@@ -36,7 +34,7 @@ class CallService : InCallService() {
 
     override fun onCallAdded(call: Call) {
         super.onCallAdded(call)
-        android.util.Log.i("RosenwegAnruf", "onCallAdded state=${call.state} selbst=${call.details.hasProperty(Call.Details.PROPERTY_SELF_MANAGED)}")
+        android.util.Log.i("RosenwegAnruf", "onCallAdded state=${call.state}")
         CallManager.onCallAdded(call)
         CallManager.inCallService = this
         call.registerCallback(callListener)
@@ -45,8 +43,6 @@ class CallService : InCallService() {
         // Incoming (unlocked): if user opted in, low priority ➜ manual activity start, otherwise high priority (FSI)
         // Outgoing (unlocked): low priority ➜ manual activity start
         Vollbildrecht.pruefen(this)
-        // selbst verwaltetes SIP-Konto: Android klingelt nicht, wir schon
-        if (Klingeln.brauchtEigenes(call)) Klingeln.start(this)
         val isIncoming = !call.isOutgoing()
         val isDeviceLocked = !powerManager.isInteractive || keyguardManager.isDeviceLocked
         val lowPriority = when {
@@ -77,7 +73,6 @@ class CallService : InCallService() {
     override fun onCallRemoved(call: Call) {
         super.onCallRemoved(call)
         call.unregisterCallback(callListener)
-        if (CallManager.getPhoneState() == NoCall || call.state == Call.STATE_DISCONNECTED) Klingeln.stop()
         val wasPrimaryCall = call == CallManager.getPrimaryCall()
         CallManager.onCallRemoved(call)
         if (CallManager.getPhoneState() == NoCall) {
@@ -100,15 +95,8 @@ class CallService : InCallService() {
         }
     }
 
-    // Lautstaerketaste / "Stumm" waehrend des Klingelns
-    override fun onSilenceRinger() {
-        super.onSilenceRinger()
-        Klingeln.stop()
-    }
-
     override fun onDestroy() {
         super.onDestroy()
-        Klingeln.stop()
         callNotificationManager.cancelNotification()
     }
 }

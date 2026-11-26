@@ -9,20 +9,15 @@ import android.os.Build
 import android.os.VibrationEffect
 import android.os.Vibrator
 import android.os.VibratorManager
-import android.telecom.Call
 
 /**
- * Rosenweg: Klingeln fuer selbst verwaltete Anrufe (persoenliches SIP-Konto).
- * Bei CAPABILITY_SELF_MANAGED spielt Android keinen Klingelton - die App muss selbst
- * klingeln. Beachtet Laut/Vibrieren/Lautlos und "Bitte nicht stoeren" (ueber den Ton-Kanal
+ * Rosenweg: Klingeln fuer Rosenweg-Anrufe auf privaten Handys (EigenerAnruf, ohne Telecom).
+ * Dort spielt Android keinen Klingelton - die App muss selbst klingeln. Beachtet Laut/Vibrieren/Lautlos und "Bitte nicht stoeren" (ueber den Ton-Kanal
  * des Klingeltons, den das System bei DND stummschaltet).
  */
 object Klingeln {
     private var ton: Ringtone? = null
     private var vibrator: Vibrator? = null
-
-    fun brauchtEigenes(call: Call): Boolean =
-        call.details.hasProperty(Call.Details.PROPERTY_SELF_MANAGED) && call.state == Call.STATE_RINGING
 
     @Synchronized
     fun start(ctx: Context) {

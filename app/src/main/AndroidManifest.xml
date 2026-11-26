@@ -64,7 +64,8 @@
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
-                <data android:scheme="ch.rosenweg4303.phone" android:path="/anmeldung" />
+                <!-- Ruecksprung ch.rosenweg4303.phone:/anmeldung hat bewusst keinen Host (Authentik-Regex) -->
+                <data android:scheme="ch.rosenweg4303.phone" android:path="/anmeldung" tools:ignore="AppLinkUrlError" />
             </intent-filter>
         </activity>
 
@@ -76,14 +77,23 @@
         <activity
             android:name=".activities.MainActivity"
             android:configChanges="orientation|screenSize"
-            android:exported="true">
+            android:exported="true" />
 
+        <!-- Rosenweg (26.11.2026): alle Eingaenge, mit denen Android die App als Telefon-App sieht
+             (DIAL/tel:, CALL, Anrufliste), stehen in eigenen Aliasen. Auf privaten Handys schaltet
+             Betriebsart sie aus (zusammen mit CallService, SimpleCallScreeningService und
+             SipConnectionService) - dann ist die App nicht als Standard-Telefon-App waehlbar.
+             Auf geteilten Telefonen (Rosenweg Geraet) bleiben sie an wie bisher. -->
+        <activity-alias
+            android:name=".activities.MainActivity.Anrufliste"
+            android:exported="true"
+            android:targetActivity=".activities.MainActivity">
             <intent-filter>
                 <action android:name="android.intent.action.VIEW" />
                 <data android:mimeType="vnd.android.cursor.dir/calls" />
                 <category android:name="android.intent.category.DEFAULT" />
             </intent-filter>
-        </activity>
+        </activity-alias>
 
         <activity
             android:name="org.fossify.commons.activities.AboutActivity"
@@ -149,7 +159,13 @@
             android:label="@string/dialpad"
             android:parentActivityName=".activities.MainActivity"
             android:screenOrientation="portrait"
-            android:windowSoftInputMode="stateHidden">
+            android:windowSoftInputMode="stateHidden" />
+
+        <activity-alias
+            android:name=".activities.DialpadActivity.System"
+            android:exported="true"
+            android:label="@string/dialpad"
+            android:targetActivity=".activities.DialpadActivity">
 
             <intent-filter>
                 <action android:name="android.intent.action.DIAL" />
@@ -173,14 +189,20 @@
 
                 <data android:scheme="tel" />
             </intent-filter>
-        </activity>
+        </activity-alias>
 
         <activity
             android:name=".activities.DialerActivity"
             android:configChanges="orientation"
             android:exported="true"
             android:label="@string/dialer"
-            android:theme="@style/Theme.Transparent">
+            android:theme="@style/Theme.Transparent" />
+
+        <activity-alias
+            android:name=".activities.DialerActivity.System"
+            android:exported="true"
+            android:label="@string/dialer"
+            android:targetActivity=".activities.DialerActivity">
 
             <intent-filter>
                 <action android:name="android.intent.action.CALL" />
@@ -188,7 +210,22 @@
 
                 <data android:scheme="tel" />
             </intent-filter>
-        </activity>
+        </activity-alias>
+
+        <!-- Rosenweg: Anruffenster fuer Rosenweg-Anrufe auf privaten Handys (ohne Telecom) -->
+        <activity
+            android:name=".activities.EigenerAnrufActivity"
+            android:excludeFromRecents="true"
+            android:exported="false"
+            android:label="@string/ongoing_call"
+            android:launchMode="singleTask"
+            android:screenOrientation="portrait"
+            android:showOnLockScreen="true"
+            android:taskAffinity="ch.rosenweg4303.phone.anruf" />
+
+        <receiver
+            android:name=".receivers.EigenerAnrufAktion"
+            android:exported="false" />
 
         <service
             android:name=".services.CallService"
@@ -197,10 +234,6 @@
             android:permission="android.permission.BIND_INCALL_SERVICE">
             <meta-data
                 android:name="android.telecom.IN_CALL_SERVICE_UI"
-                android:value="true" />
-            <!-- Rosenweg: auch die selbst verwalteten SIP-Anrufe (Konto ohne Freischalten) -->
-            <meta-data
-                android:name="android.telecom.INCLUDE_SELF_MANAGED_CALLS"
                 android:value="true" />
 
             <intent-filter>

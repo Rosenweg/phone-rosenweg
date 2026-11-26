@@ -37,7 +37,9 @@ object Vollbildrecht {
 
     fun pruefen(c: Context) {
         val nm = c.getSystemService(NotificationManager::class.java) ?: return
-        if (c.canUseFullScreenIntent()) {
+        // eigenes Handy ohne Rosenweg-Anmeldung: es kommen keine Rosenweg-Anrufe, also nicht warnen
+        val ohneAnmeldung = !geteilt(c) && PersoenlichesKonto.privatNummer(c) == null && !PersoenlichesKonto.manuellDa(c)
+        if (c.canUseFullScreenIntent() || ohneAnmeldung) {
             nm.cancel(NOTIF_ID)
             return
         }
@@ -52,14 +54,19 @@ object Vollbildrecht {
             Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:" + c.packageName))
         }.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
         val pi = PendingIntent.getActivity(c, NOTIF_ID, einstellung, PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT)
+        // geteiltes Telefon: die Technik richtet es ein; eigenes Handy: die Person selbst
+        val wer = if (geteilt(c)) "Bitte der Technik melden (Einrichtungsskript) oder hier antippen und erlauben."
+        else "Bitte hier antippen und „Vollbild-Benachrichtigungen“ für Rosenweg Telefon erlauben."
         val n = NotificationCompat.Builder(c, KANAL)
             .setSmallIcon(org.fossify.commons.R.drawable.ic_phone_vector)
             .setContentTitle("Anrufe werden nicht angezeigt")
-            .setContentText("Rosenweg Telefon fehlt das Recht für Vollbild-Anrufe. Bitte der Technik melden.")
+            .setContentText(
+                if (geteilt(c)) "Rosenweg Telefon fehlt das Recht für Vollbild-Anrufe. Bitte der Technik melden."
+                else "Rosenweg Telefon fehlt das Recht für Vollbild-Anrufe. Antippen und erlauben."
+            )
             .setStyle(NotificationCompat.BigTextStyle().bigText(
                 "Rosenweg Telefon fehlt das Recht „Vollbild-Benachrichtigungen“. Bei gesperrtem Telefon "
-                    + "erscheint ein Anruf dann nur als Symbol und lässt sich nicht annehmen. "
-                    + "Bitte der Technik melden (Einrichtungsskript) oder hier antippen und erlauben."))
+                    + "erscheint ein Anruf dann nur als Symbol und lässt sich nicht annehmen. " + wer))
             .setContentIntent(pi)
             .setOngoing(true)
             .setPriority(NotificationCompat.PRIORITY_HIGH)
