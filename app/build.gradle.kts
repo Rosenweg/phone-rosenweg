@@ -140,6 +140,8 @@ detekt {
 dependencies {
     // Rosenweg Updater (ohne Geraet: alle Rosenweg-Apps aus dem Katalog der Anlage aktualisieren)
     implementation("ch.rosenweg4303:updater:0.1.2")
+    // Anmeldung auf dem eigenen Handy: gemeinsamer Anmeldeschirm (Karte oder Rosenweg-Konto)
+    implementation("ch.rosenweg4303:cloud:0.9.0")
     implementation(libs.fossify.commons)
     // Rosenweg: Sipdroid-Kern (GPLv3 + ADDITIONAL_TERMS, siehe sipdroid/ADDITIONAL_TERMS.txt)
     implementation(project(":sipdroid"))
