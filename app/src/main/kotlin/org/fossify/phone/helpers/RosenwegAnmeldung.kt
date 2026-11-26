@@ -89,7 +89,7 @@ object RosenwegAnmeldung {
         val geraet = listOf(Build.MANUFACTURER, Build.MODEL).filter { it.isNotBlank() }.distinct().joinToString(" ")
         val (status, text) = post(
             "$ANLAGE/api/telefon/privat/anmelden", "application/json",
-            JSONObject().put("geraet", geraet).toString(), token
+            JSONObject().put("geraet", geraet).put("geraet_kennung", GeraetKennung.von(c)).toString(), token
         )
         val j = try { JSONObject(text) } catch (e: Exception) { JSONObject() }
         if (status != 200) throw Fehler(j.optString("error").ifEmpty { "Anlage nicht erreichbar ($status)" })
@@ -106,7 +106,9 @@ object RosenwegAnmeldung {
         val zugang = PersoenlichesKonto.privatZugang(c) ?: return null
         val (status, text) = post(
             "$ANLAGE/api/telefon/privat/stand", "application/json",
-            JSONObject().put("user", zugang.first).put("password", zugang.second).toString(), null
+            // geraet_kennung: aeltere Zugaenge bekommen sie so nachgetragen (eine Zeile je Handy im Portal)
+            JSONObject().put("user", zugang.first).put("password", zugang.second)
+                .put("geraet_kennung", GeraetKennung.von(c)).toString(), null
         )
         return when (status) {
             200 -> JSONObject(text)
