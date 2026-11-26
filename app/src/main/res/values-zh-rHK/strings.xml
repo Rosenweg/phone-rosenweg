@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_launcher_name">電話</string>
+    <string name="app_launcher_name">Rosenweg 電話</string>
     <string name="default_phone_app_prompt">請將此應用程式設為預設電話應用程式</string>
     <string name="allow_displaying_over_other_apps">請允許「在其他應用程式上層顯示」，以確保功能正常運作</string>
     <string name="could_not_access_contacts">無法存取您的聯絡人</string>

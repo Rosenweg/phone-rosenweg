@@ -16,3 +16,5 @@ dependencyResolutionManagement {
     }
 }
 include(":app")
+// Rosenweg: SIP-Kern (Sipdroid) fuer das persoenliche Konto
+include(":sipdroid")

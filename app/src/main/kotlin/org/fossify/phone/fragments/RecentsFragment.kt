@@ -49,7 +49,9 @@ class RecentsFragment(
     }
 
     override fun setupFragment() {
-        val placeholderResId = if (context.hasPermission(PERMISSION_READ_CALL_LOG)) {
+        // Rosenweg: privates Handy - eigene Liste, kein Zugriff aufs Anrufprotokoll noetig
+        val privat = org.fossify.phone.helpers.Betriebsart.privat(context)
+        val placeholderResId = if (privat || context.hasPermission(PERMISSION_READ_CALL_LOG)) {
             R.string.no_previous_calls
         } else {
             R.string.could_not_access_the_call_history
@@ -144,7 +146,7 @@ class RecentsFragment(
         if (recents.isEmpty()) {
             binding.apply {
                 showOrHidePlaceholder(true)
-                recentsPlaceholder2.beGoneIf(context.hasPermission(PERMISSION_READ_CALL_LOG))
+                recentsPlaceholder2.beGoneIf(org.fossify.phone.helpers.Betriebsart.privat(context) || context.hasPermission(PERMISSION_READ_CALL_LOG))
                 recentsList.beGone()
             }
         } else {
@@ -165,7 +167,12 @@ class RecentsFragment(
                     },
                     itemClick = {
                         val recentCall = it as RecentCall
-                        activity?.startCallWithConfirmationCheck(recentCall.phoneNumber, recentCall.name)
+                        if (recentCall.type == android.provider.CallLog.Calls.VOICEMAIL_TYPE && recentCall.anlageId > 0) {
+                            // Rosenweg: persoenliche Voicemail aus der Anlage anhoeren
+                            org.fossify.phone.dialogs.VoicemailDialog(activity as SimpleActivity, recentCall)
+                        } else {
+                            activity?.startCallWithConfirmationCheck(recentCall.phoneNumber, recentCall.name)
+                        }
                     },
                     profileIconClick = {
                         val recentCall = it as RecentCall

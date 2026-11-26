@@ -70,11 +70,34 @@ fun getCallContact(context: Context, call: Call?, callback: (CallContact) -> Uni
                         }
                     }
                 } else {
-                    callContact.name = callContact.number
+                    // Rosenweg: nicht im Adressbuch -> den Namen nehmen, den die
+                    // Telefonanlage mitschickt (CNAP / SIP-Anzeigename), sonst die Nummer.
+                    val cnap = try {
+                        call?.details?.callerDisplayName?.trim()
+                    } catch (e: Exception) {
+                        null
+                    }
+                    callContact.name = if (!cnap.isNullOrEmpty() && cnap != number) cnap else callContact.number
                 }
 
                 callback(callContact)
             }
+        } else {
+            // Rosenweg: SIP-Absender (sip:anonymous, sip:name@host) - Fossify rief hier den
+            // callback nie auf, dann gab es weder Benachrichtigung noch Anruffenster.
+            val benutzer = uri.substringAfter(":").substringBefore("@").substringBefore(";")
+            val cnap = try {
+                call?.details?.callerDisplayName?.trim()
+            } catch (e: Exception) {
+                null
+            }
+            callContact.number = if (benutzer.equals("anonymous", true)) "" else benutzer
+            callContact.name = when {
+                !cnap.isNullOrEmpty() -> cnap
+                benutzer.isEmpty() || benutzer.equals("anonymous", true) -> "Unbekannt"
+                else -> benutzer
+            }
+            callback(callContact)
         }
     }
 }

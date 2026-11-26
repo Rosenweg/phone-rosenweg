@@ -16,6 +16,13 @@ import org.fossify.phone.extensions.getAvailableSIMCardLabels
 import org.fossify.phone.models.RecentCall
 import org.fossify.phone.models.SIMAccount
 
+/** Sperrliste lesen, ohne Standard-Telefon-App zu sein (dann gibt es keine: leer). */
+private fun Context.getBlockedNumbersSafe() = try {
+    getBlockedNumbers()
+} catch (e: Exception) {
+    ArrayList()
+}
+
 class RecentsHelper(private val context: Context) {
     companion object {
         private const val COMPARABLE_PHONE_NUMBER_LENGTH = 9
@@ -31,6 +38,30 @@ class RecentsHelper(private val context: Context) {
         callback: (List<RecentCall>) -> Unit,
     ) {
         val privateCursor = context.getMyContactsCursor(favoritesOnly = false, withPhoneNumbersOnly = true)
+        // Rosenweg: privates Handy - nur die eigene Liste der Rosenweg-Anrufe, das Anrufprotokoll
+        // des Handys bleibt unberuehrt (kein READ_CALL_LOG)
+        if (Betriebsart.privat(context)) {
+            ContactsHelper(context).getContacts(getAll = true, showOnlyContactsWithNumbers = true) { contacts ->
+                ensureBackgroundThread {
+                    val privateContacts = MyContactsContentProvider.getContacts(context, privateCursor)
+                    if (privateContacts.isNotEmpty()) contacts.addAll(privateContacts)
+                    val blocked = context.getBlockedNumbersSafe()
+                    // eigene Liste (Anrufe ueber dieses Handy) + Verlauf der Anlage (alle Anrufe an
+                    // die persoenliche Nummer), doppelte gelten einmal (der lokale Eintrag)
+                    val alle = AnlageVerlauf.zusammenfuehren(
+                        EigeneAnrufliste.laden(context, contacts).sortedByDescending { it.startTS },
+                        AnlageVerlauf.ladenPrivat(context, contacts)
+                    )
+                    callback(
+                        alle
+                            .filter { !context.isNumberBlocked(it.phoneNumber, blocked) }
+                            .sortedByDescending { it.startTS }
+                            .take(queryLimit)
+                    )
+                }
+            }
+            return
+        }
         if (!context.hasPermission(PERMISSION_READ_CALL_LOG)) {
             callback(ArrayList())
             return
@@ -66,11 +97,12 @@ class RecentsHelper(private val context: Context) {
                     getRecents(contacts)
                 }
 
-                callback(
-                    recentCalls
-                        .sortedByDescending { it.startTS }
-                        .distinctBy { it.id }
+                // Rosenweg: Anrufe der Person aus der Anlage dazu (ueber alle Geraete)
+                val mitAnlage = AnlageVerlauf.zusammenfuehren(
+                    recentCalls.sortedByDescending { it.startTS }.distinctBy { it.id },
+                    AnlageVerlauf.laden(context, contacts)
                 )
+                callback(mitAnlage.distinctBy { it.id })
             }
         }
     }
@@ -285,6 +317,13 @@ class RecentsHelper(private val context: Context) {
     }
 
     fun removeRecentCalls(ids: List<Int>, callback: () -> Unit) {
+        if (Betriebsart.privat(context)) {
+            ensureBackgroundThread {
+                EigeneAnrufliste.entfernen(context, ids)
+                callback()
+            }
+            return
+        }
         ensureBackgroundThread {
             ids.chunked(30).forEach { chunk ->
                 val selection = "${Calls._ID} IN (${getQuestionMarks(chunk.size)})"
@@ -297,6 +336,13 @@ class RecentsHelper(private val context: Context) {
 
     @SuppressLint("MissingPermission")
     fun removeAllRecentCalls(activity: SimpleActivity, callback: () -> Unit) {
+        if (Betriebsart.privat(context)) {
+            ensureBackgroundThread {
+                EigeneAnrufliste.leeren(context)
+                callback()
+            }
+            return
+        }
         activity.handlePermission(PERMISSION_WRITE_CALL_LOG) {
             if (it) {
                 ensureBackgroundThread {
@@ -308,6 +354,13 @@ class RecentsHelper(private val context: Context) {
     }
 
     fun restoreRecentCalls(activity: SimpleActivity, objects: List<RecentCall>, callback: () -> Unit) {
+        if (Betriebsart.privat(context)) {
+            ensureBackgroundThread {
+                EigeneAnrufliste.wiederherstellen(context, objects)
+                callback()
+            }
+            return
+        }
         activity.handlePermission(PERMISSION_WRITE_CALL_LOG) { granted ->
             if (granted) {
                 ensureBackgroundThread {

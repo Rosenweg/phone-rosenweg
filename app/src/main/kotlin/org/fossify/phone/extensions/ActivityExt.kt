@@ -34,7 +34,7 @@ fun SimpleActivity.launchCreateNewContactIntent() {
 
 // handle private contacts differently, only Simple Contacts Pro can open them
 fun Activity.startContactDetailsIntent(contact: Contact) {
-    val simpleContacts = "org.fossify.contacts"
+    val simpleContacts = "ch.rosenweg4303.contacts"
     val simpleContactsDebug = "org.fossify.contacts.debug"
     val isPrivateContact = contact.rawId > FIRST_CONTACT_ID
             && contact.contactId > FIRST_CONTACT_ID

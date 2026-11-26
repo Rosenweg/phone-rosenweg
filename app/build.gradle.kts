@@ -112,7 +112,8 @@ android {
         )
     }
 
-    namespace = project.property("APP_ID").toString()
+    // Rosenweg: nur die applicationId ist eigen (ch.rosenweg4303.phone); Kotlin-Namensraum wie im Original.
+    namespace = "org.fossify.phone"
 
     lint {
         checkReleaseBuilds = false
@@ -137,7 +138,11 @@ detekt {
 }
 
 dependencies {
+    // Rosenweg Updater (ohne Geraet: alle Rosenweg-Apps aus dem Katalog der Anlage aktualisieren)
+    implementation("ch.rosenweg4303:updater:0.1.2")
     implementation(libs.fossify.commons)
+    // Rosenweg: Sipdroid-Kern (GPLv3 + ADDITIONAL_TERMS, siehe sipdroid/ADDITIONAL_TERMS.txt)
+    implementation(project(":sipdroid"))
     implementation(libs.indicator.fast.scroll)
     implementation(libs.autofit.text.view)
     implementation(libs.kotlinx.serialization.json)

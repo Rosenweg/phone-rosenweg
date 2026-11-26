@@ -40,6 +40,9 @@ import org.fossify.phone.fragments.ContactsFragment
 import org.fossify.phone.fragments.FavoritesFragment
 import org.fossify.phone.fragments.MyViewPagerFragment
 import org.fossify.phone.fragments.RecentsFragment
+import org.fossify.phone.helpers.AnlageEinstellungen
+import org.fossify.phone.helpers.Betriebsart
+import org.fossify.phone.helpers.PersoenlichesKonto
 import org.fossify.phone.helpers.OPEN_DIAL_PAD_AT_LAUNCH
 import org.fossify.phone.helpers.RecentsHelper
 import org.fossify.phone.helpers.tabsList
@@ -63,6 +66,8 @@ class MainActivity : SimpleActivity() {
         super.onCreate(savedInstanceState)
         setContentView(binding.root)
         appLaunched(BuildConfig.APPLICATION_ID)
+        // Rosenweg (Regel 7): Einstellungen der angemeldeten Person von der Anlage
+        AnlageEinstellungen.abgleichen(this) { recreate() }
         setupOptionsMenu()
         refreshMenuItems()
         setupEdgeToEdge(padBottomImeAndSystem = listOf(binding.mainTabsHolder))
@@ -70,7 +75,12 @@ class MainActivity : SimpleActivity() {
         EventBus.getDefault().register(this)
         launchedDialer = savedInstanceState?.getBoolean(OPEN_DIAL_PAD_AT_LAUNCH) ?: false
 
-        if (isDefaultDialer()) {
+        if (Betriebsart.privat(this)) {
+            // Rosenweg (26.11.2026): privates Handy - nicht Standard-Telefon-App werden, keine
+            // Anrufsperre-Rolle, kein "ueber anderen Apps"; nur Kontakte, Benachrichtigungen
+            // (Vollbild fuer eingehende Rosenweg-Anrufe) und das Mikrofon.
+            checkContactPermissions()
+        } else if (isDefaultDialer()) {
             checkContactPermissions()
 
             if (!config.wasOverlaySnackbarConfirmed && !Settings.canDrawOverlays(this)) {
@@ -98,7 +108,7 @@ class MainActivity : SimpleActivity() {
             launchSetDefaultDialerIntent()
         }
 
-        if (isQPlus() && (config.blockUnknownNumbers || config.blockHiddenNumbers)) {
+        if (isQPlus() && !Betriebsart.privat(this) && (config.blockUnknownNumbers || config.blockHiddenNumbers)) {
             setDefaultCallerIdApp()
         }
 
@@ -115,6 +125,18 @@ class MainActivity : SimpleActivity() {
         }
 
         updateMenuColors()
+        refreshMenuItems()   // Rosenweg: "Mit Rosenweg anmelden" / "Abmelden" nach dem Ruecksprung
+        // einmal pro Start fragen (nicht bei jedem Zurueckkehren aus dem Dialog)
+        var akkuOffen = false
+        if (!akkuGefragt) {
+            akkuGefragt = org.fossify.phone.helpers.RosenwegAnmeldung.akkuAusnahmeErfragen(this)
+            akkuOffen = akkuGefragt
+        }
+        if (!akkuOffen) {
+            privatEinrichten()
+            rolleZurueckgeben()
+        }
+        berechtigungsHinweis()
         val properPrimaryColor = getProperPrimaryColor()
         val dialpadIcon = resources.getColoredDrawableWithColor(R.drawable.ic_dialpad_vector, properPrimaryColor.getContrastColor())
         binding.mainDialpadButton.setImageDrawable(dialpadIcon)
@@ -203,6 +225,13 @@ class MainActivity : SimpleActivity() {
             findItem(R.id.change_view_type).isVisible = currentFragment == getFavoritesFragment()
             findItem(R.id.column_count).isVisible = currentFragment == getFavoritesFragment() && config.viewType == VIEW_TYPE_GRID
             findItem(R.id.more_apps_from_us).isVisible = resources.getBoolean(R.bool.is_google_play_build)
+            // Rosenweg: Zugangsdaten von Hand nur auf privaten Telefonen (ohne Rosenweg Geraet)
+            findItem(R.id.rosenweg_sip_konto).isVisible = !PersoenlichesKonto.geraetDa(this@MainActivity)
+            findItem(R.id.rosenweg_anmelden).apply {
+                isVisible = !PersoenlichesKonto.geraetDa(this@MainActivity)
+                title = PersoenlichesKonto.privatNummer(this@MainActivity)
+                    ?.let { "Abmelden (Rosenweg $it)" } ?: getString(R.string.rosenweg_anmelden)
+            }
         }
     }
 
@@ -233,10 +262,33 @@ class MainActivity : SimpleActivity() {
                     R.id.change_view_type -> changeViewType()
                     R.id.column_count -> changeColumnCount()
                     R.id.about -> launchAbout()
+                    R.id.rosenweg_sipdroid_info -> sipdroidInfo()
+                    R.id.rosenweg_anmelden -> rosenwegAnmelden()
+                    R.id.rosenweg_sip_konto -> startActivity(Intent(this@MainActivity, org.sipdroid.sipua.ui.Settings::class.java))
                     else -> return@setOnMenuItemClickListener false
                 }
                 return@setOnMenuItemClickListener true
             }
+        }
+    }
+
+    private var akkuGefragt = false
+
+    private fun rosenwegAnmelden() {
+        val nummer = org.fossify.phone.helpers.PersoenlichesKonto.privatNummer(this)
+        if (nummer == null) {
+            org.fossify.phone.helpers.RosenwegAnmeldung.starten(this)
+            return
+        }
+        org.fossify.commons.dialogs.ConfirmationDialog(this, message = "Rosenweg Telefon abmelden? Deine Nummer $nummer klingelt dann nicht mehr auf diesem Handy.") {
+            val app = applicationContext
+            Thread {
+                org.fossify.phone.helpers.RosenwegAnmeldung.abmelden(app)
+                runOnUiThread {
+                    toast("Abgemeldet")
+                    refreshMenuItems()
+                }
+            }.start()
         }
     }
 
@@ -265,6 +317,79 @@ class MainActivity : SimpleActivity() {
 
     private fun updateMenuColors() {
         binding.mainMenu.updateColors()
+    }
+
+    private var rechteGefragt = false
+    private var hinweis: Snackbar? = null
+
+    /**
+     * Rosenweg (26.11.2026): eigenes Handy, angemeldet - solange etwas fehlt, ohne das ein
+     * Rosenweg-Anruf nicht klingelt bzw. nicht als Anrufschirm erscheint, bleibt unten ein
+     * deutlicher Hinweis mit Knopf zur passenden Einstellung (nicht nur einmal gefragt).
+     * Reihenfolge: Benachrichtigungen, Vollbild (Android 14+), Akku-Ausnahme.
+     */
+    private fun berechtigungsHinweis() {
+        val fehlt = if (Betriebsart.privat(this) &&
+            (PersoenlichesKonto.privatNummer(this) != null || PersoenlichesKonto.manuellDa(this))
+        ) org.fossify.phone.helpers.EigenerAnruf.fehlendesRecht(this) else null
+        if (fehlt == null) {
+            hinweis?.dismiss()
+            hinweis = null
+            return
+        }
+        hinweis?.dismiss()
+        hinweis = Snackbar.make(binding.mainHolder, fehlt.text, Snackbar.LENGTH_INDEFINITE)
+            .setAction("Einstellungen") {
+                try {
+                    startActivity(fehlt.einstellung)
+                } catch (e: Exception) {
+                    showErrorToast(e)
+                }
+            }.apply {
+                setBackgroundTint(getColor(R.color.md_red_700))
+                setTextColor(android.graphics.Color.WHITE)
+                setActionTextColor(android.graphics.Color.WHITE)
+                setTextMaxLines(4)
+                show()
+            }
+    }
+
+    /**
+     * Privates Handy, angemeldet: einmal pro Start die Rechte fuer Rosenweg-Anrufe in der App
+     * (Benachrichtigungen/Vollbild fuer eingehende Anrufe, Mikrofon). Ohne Anmeldung nichts fragen.
+     */
+    private fun privatEinrichten() {
+        if (rechteGefragt || !Betriebsart.privat(this)) return
+        if (PersoenlichesKonto.privatNummer(this) == null && !PersoenlichesKonto.manuellDa(this)) return
+        rechteGefragt = true
+        handleFullScreenNotificationsPermission { granted ->
+            if (!granted) {
+                toast(org.fossify.commons.R.string.notifications_disabled)
+            }
+            handlePermission(PERMISSION_RECORD_AUDIO) { }
+        }
+    }
+
+    /**
+     * Frueher (bis v41) wurde Rosenweg Telefon auch auf privaten Handys Standard-Telefon-App.
+     * Die Rolle kann die App nicht selbst abgeben: einmal pro Start erklaeren, wie die
+     * Telefon-App des Handys wieder Standard wird.
+     */
+    private var rolleErklaert = false
+
+    private fun rolleZurueckgeben() {
+        if (rolleErklaert || !Betriebsart.privat(this)) return
+        if (!Betriebsart.haeltTelefonRolle(this) && !Betriebsart.haeltSperrRolle(this)) return
+        rolleErklaert = true
+        ConfirmationDialog(
+            this, message = Betriebsart.ROLLE_TEXT, positive = R.string.settings, negative = org.fossify.commons.R.string.later
+        ) {
+            try {
+                startActivity(Betriebsart.standardAppsEinstellung())
+            } catch (e: Exception) {
+                showErrorToast(e)
+            }
+        }
     }
 
     private fun checkContactPermissions() {
@@ -558,6 +683,25 @@ class MainActivity : SimpleActivity() {
         hideKeyboard()
         startActivity(Intent(applicationContext, SettingsActivity::class.java))
     }
+
+    /**
+     * Rosenweg: Hinweise des Sipdroid-Kerns (ADDITIONAL_TERMS.txt, Punkt 1: aus dem Menue der
+     * Hauptansicht erreichbar, Text unveraendert, Ergaenzungen nur am Ende).
+     */
+    private fun sipdroidInfo() {
+        val text = getString(org.sipdroid.sipua.R.string.sipdroid_about).replace("\\n", "\n") + SIPDROID_ROSENWEG
+        androidx.appcompat.app.AlertDialog.Builder(this)
+            .setTitle(R.string.rosenweg_sipdroid_info)
+            .setMessage(text)
+            .setPositiveButton(android.R.string.ok, null)
+            .show()
+    }
+
+    private val SIPDROID_ROSENWEG = "\n\n────────────\n" +
+        "Rosenweg Telefon\n" +
+        "Telefoniert mit dem SIP-Kern von Android SIP / Sipdroid (Kopie aus Rosenweg Gerät) " +
+        "über das persönliche Konto der angemeldeten Person an der Rosenweg-Anlage.\n" +
+        "Quellcode: github.com/Rosenweg · Übersicht: rosenweg4303.ch/apps.html"
 
     private fun launchAbout() {
         val licenses = LICENSE_GLIDE or LICENSE_INDICATOR_FAST_SCROLL or LICENSE_AUTOFITTEXTVIEW

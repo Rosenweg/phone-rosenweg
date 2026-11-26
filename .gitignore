@@ -11,3 +11,7 @@ keystore.properties
 fastlane/fastlane.json
 fastlane/report.xml
 .kotlin/
+
+# Rosenweg: Sipdroid-Modul
+/sipdroid/build
+/sipdroid/.cxx

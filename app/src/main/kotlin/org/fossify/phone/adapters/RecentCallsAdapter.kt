@@ -588,6 +588,7 @@ class RecentCallsAdapter(
                 }
 
                 val drawable = when (call.type) {
+                    Calls.VOICEMAIL_TYPE -> resources.getColoredDrawableWithColor(R.drawable.ic_voicemail_vector, missedCallColor)
                     Calls.OUTGOING_TYPE -> outgoingCallIcon
                     Calls.MISSED_TYPE -> incomingMissedCallIcon
                     else -> incomingCallIcon

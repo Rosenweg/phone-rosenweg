@@ -1,0 +1,205 @@
+package org.fossify.phone.helpers
+
+import android.app.Activity
+import android.content.Context
+import android.content.Intent
+import android.net.Uri
+import android.os.Build
+import android.util.Base64
+import android.util.Log
+import org.json.JSONObject
+import java.net.HttpURLConnection
+import java.net.URL
+import java.net.URLEncoder
+import java.security.MessageDigest
+import java.security.SecureRandom
+
+/**
+ * Rosenweg Telefon auf dem eigenen Handy (Stefan 25.11.2026): Anmeldung mit dem
+ * Rosenweg-Konto statt SIP-Daten von Hand.
+ *
+ * 1. Browser mit der Authentik-Anmeldung (Anwendung "rosenweg-apps", oeffentlicher Client,
+ *    PKCE S256), Ruecksprung ch.rosenweg4303.phone:/anmeldung -> AnmeldungActivity.
+ * 2. Code gegen ein Access-Token tauschen (nur einmal gebraucht, wird nicht gespeichert).
+ * 3. Mit dem Token bei der Anlage einen festen Zugang <nummer>-p<id> holen
+ *    (POST /api/telefon/privat/anmelden) und wie ein persoenliches Konto registrieren.
+ * Abmelden: POST /api/telefon/privat/abmelden mit dem Zugang selbst.
+ *
+ * Auf geteilten Telefonen (Rosenweg Geraet) gibt es das nicht - dort kommt der Zugang
+ * aus der Sitzung. Nie Token, Code oder Passwort loggen.
+ */
+object RosenwegAnmeldung {
+    private const val TAG = "RosenwegAnmeldung"
+    private const val AUTHENTIK = "https://authentik.rosenweg4303.ch/application/o"
+    private const val CLIENT_ID = "rosenweg-apps"
+    private const val ANLAGE = "https://pbx.rosenweg4303.ch"
+    const val RUECKSPRUNG = "ch.rosenweg4303.phone:/anmeldung"
+
+    private const val PREFS = "rosenweg_anmeldung"
+    private const val P_VERIFIER = "verifier"
+    private const val P_STATE = "state"
+
+    private fun prefs(c: Context) = c.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+
+    private fun zufall(bytes: Int): String {
+        val b = ByteArray(bytes).also { SecureRandom().nextBytes(it) }
+        return Base64.encodeToString(b, Base64.URL_SAFE or Base64.NO_WRAP or Base64.NO_PADDING)
+    }
+
+    private fun enc(s: String) = URLEncoder.encode(s, "UTF-8")
+
+    /** Schritt 1: Anmeldeseite im Browser oeffnen. */
+    fun starten(a: Activity) {
+        val verifier = zufall(48)
+        val state = zufall(24)
+        prefs(a).edit().putString(P_VERIFIER, verifier).putString(P_STATE, state).commit()
+        val challenge = Base64.encodeToString(
+            MessageDigest.getInstance("SHA-256").digest(verifier.toByteArray(Charsets.US_ASCII)),
+            Base64.URL_SAFE or Base64.NO_WRAP or Base64.NO_PADDING
+        )
+        val url = "$AUTHENTIK/authorize/?response_type=code&client_id=$CLIENT_ID" +
+            "&redirect_uri=${enc(RUECKSPRUNG)}&scope=${enc("openid email profile")}" +
+            "&state=$state&code_challenge=$challenge&code_challenge_method=S256"
+        a.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
+    }
+
+    class Fehler(meldung: String) : Exception(meldung)
+
+    /** Schritt 2+3 (blockierend, nicht im UI-Thread). Gibt die persoenliche Nummer zurueck. */
+    fun abschliessen(c: Context, antwort: Uri): String {
+        val p = prefs(c)
+        val verifier = p.getString(P_VERIFIER, null)
+        val state = p.getString(P_STATE, null)
+        p.edit().clear().commit()   // nur einmal verwendbar
+        antwort.getQueryParameter("error")?.let { throw Fehler("Anmeldung abgebrochen") }
+        val code = antwort.getQueryParameter("code") ?: throw Fehler("Anmeldung abgebrochen")
+        if (verifier == null || state == null || antwort.getQueryParameter("state") != state) {
+            throw Fehler("Anmeldung abgelaufen, bitte nochmals")
+        }
+        val token = post(
+            "$AUTHENTIK/token/",
+            "application/x-www-form-urlencoded",
+            "grant_type=authorization_code&code=${enc(code)}&redirect_uri=${enc(RUECKSPRUNG)}" +
+                "&client_id=$CLIENT_ID&code_verifier=${enc(verifier)}",
+            null
+        ).let { (status, text) ->
+            if (status != 200) throw Fehler("Rosenweg-Anmeldung fehlgeschlagen ($status)")
+            JSONObject(text).optString("access_token").ifEmpty { throw Fehler("Rosenweg-Anmeldung fehlgeschlagen") }
+        }
+        val geraet = listOf(Build.MANUFACTURER, Build.MODEL).filter { it.isNotBlank() }.distinct().joinToString(" ")
+        val (status, text) = post(
+            "$ANLAGE/api/telefon/privat/anmelden", "application/json",
+            JSONObject().put("geraet", geraet).toString(), token
+        )
+        val j = try { JSONObject(text) } catch (e: Exception) { JSONObject() }
+        if (status != 200) throw Fehler(j.optString("error").ifEmpty { "Anlage nicht erreichbar ($status)" })
+        PersoenlichesKonto.privatUebernehmen(c, j)
+        Log.i(TAG, "angemeldet (eigenes Handy)")
+        return j.optString("nummer")
+    }
+
+    /**
+     * Stand des eigenen Zugangs an der Anlage (blockierend): aktuelle Zugangsdaten, null = Zugang
+     * gibt es nicht mehr (im Web auf /smartphones abgemeldet). Wirft bei Netzfehlern.
+     */
+    fun stand(c: Context): JSONObject? {
+        val zugang = PersoenlichesKonto.privatZugang(c) ?: return null
+        val (status, text) = post(
+            "$ANLAGE/api/telefon/privat/stand", "application/json",
+            JSONObject().put("user", zugang.first).put("password", zugang.second).toString(), null
+        )
+        return when (status) {
+            200 -> JSONObject(text)
+            401 -> null
+            else -> throw java.io.IOException("Anlage: $status")
+        }
+    }
+
+    /** Abmelden an der Anlage (blockierend); vergisst den Zugang auch ohne Netz. */
+    fun abmelden(c: Context) {
+        val zugang = PersoenlichesKonto.privatZugang(c)
+        if (zugang != null) {
+            try {
+                val (status, _) = post(
+                    "$ANLAGE/api/telefon/privat/abmelden", "application/json",
+                    JSONObject().put("user", zugang.first).put("password", zugang.second).toString(), null
+                )
+                Log.i(TAG, "abgemeldet an der Anlage ($status)")
+            } catch (e: Exception) {
+                Log.w(TAG, "Abmelden an der Anlage: ${e.javaClass.simpleName}")
+            }
+        }
+        PersoenlichesKonto.privatVergessen(c)
+        // Grundregel: beim Abmelden die lokale Anrufliste (Rosenweg-Anrufe) loeschen
+        EigeneAnrufliste.leeren(c)
+        AnlageVerlauf.privatVergessen()
+    }
+
+    /**
+     * Eigenes Handy: ohne Akku-Ausnahme stoppt Android den Anmeldedienst nach ein paar Minuten
+     * im Hintergrund ("app idle") und laesst ihn nicht wieder starten - dann klingelt nichts.
+     * Fragt mit dem System-Dialog nach, solange die Ausnahme fehlt (nur angemeldet, privat).
+     */
+    @android.annotation.SuppressLint("BatteryLife")
+    fun akkuAusnahmeErfragen(a: Activity): Boolean {
+        if (PersoenlichesKonto.privatNummer(a) == null) return false
+        val pm = a.getSystemService(android.os.PowerManager::class.java) ?: return false
+        if (pm.isIgnoringBatteryOptimizations(a.packageName)) return false
+        return try {
+            a.startActivity(
+                Intent(android.provider.Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS, Uri.parse("package:" + a.packageName))
+            )
+            true
+        } catch (e: Exception) {
+            Log.w(TAG, "Akku-Ausnahme: ${e.javaClass.simpleName}")
+            false
+        }
+    }
+
+    /**
+     * Verlauf der Anlage fuer das eigene Handy (blockierend): alle Anrufe der Person, auch an die
+     * persoenliche Nummer ueber andere Geraete, der letzten [tage] Tage. Ausweis = der eigene
+     * Zugang (HTTP-Basic). null = nicht angemeldet/Netzfehler/401 (dann nur die lokale Liste).
+     */
+    fun anlageVerlauf(c: Context, tage: Int = 90, limit: Int = 500): org.json.JSONArray? {
+        val zugang = PersoenlichesKonto.privatZugang(c) ?: return null
+        val v = URL("$ANLAGE/api/telefon/anrufliste?tage=$tage&limit=$limit").openConnection() as HttpURLConnection
+        return try {
+            v.connectTimeout = 8000
+            v.readTimeout = 12000
+            v.setRequestProperty("Accept", "application/json")
+            val basic = Base64.encodeToString("${zugang.first}:${zugang.second}".toByteArray(), Base64.NO_WRAP)
+            v.setRequestProperty("Authorization", "Basic $basic")
+            if (v.responseCode != 200) {
+                Log.i(TAG, "Verlauf der Anlage: ${v.responseCode}")
+                null
+            } else {
+                JSONObject(v.inputStream.bufferedReader().use { it.readText() }).optJSONArray("anrufe")
+            }
+        } catch (e: Exception) {
+            Log.i(TAG, "Verlauf der Anlage: ${e.javaClass.simpleName}")
+            null
+        } finally {
+            v.disconnect()
+        }
+    }
+
+    private fun post(url: String, typ: String, body: String, bearer: String?): Pair<Int, String> {
+        val v = URL(url).openConnection() as HttpURLConnection
+        try {
+            v.requestMethod = "POST"
+            v.connectTimeout = 10000
+            v.readTimeout = 15000
+            v.doOutput = true
+            v.setRequestProperty("Content-Type", typ)
+            v.setRequestProperty("Accept", "application/json")
+            if (bearer != null) v.setRequestProperty("Authorization", "Bearer $bearer")
+            v.outputStream.use { it.write(body.toByteArray()) }
+            val status = v.responseCode
+            val text = (if (status < 400) v.inputStream else v.errorStream)?.bufferedReader()?.use { it.readText() }.orEmpty()
+            return status to text
+        } finally {
+            v.disconnect()
+        }
+    }
+}
