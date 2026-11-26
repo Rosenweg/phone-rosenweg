@@ -124,6 +124,12 @@ class MainActivity : SimpleActivity() {
             return
         }
 
+        // Rosenweg (v47): eigenes Handy ohne Anmeldung -> gemeinsamer Anmeldeschirm (commons-rosenweg,
+        // Karte oder Rosenweg-Konto, wie der Sperrbildschirm der geteilten Telefone)
+        if (org.fossify.phone.helpers.RosenwegAnmeldung.anmeldungNoetig(this) &&
+            ch.rosenweg4303.cloud.RosenwegAnmeldeSchirm.zeigenFallsNoetig(this)
+        ) return
+        zugangHolenFallsNoetig()
         updateMenuColors()
         refreshMenuItems()   // Rosenweg: "Mit Rosenweg anmelden" / "Abmelden" nach dem Ruecksprung
         // einmal pro Start fragen (nicht bei jedem Zurueckkehren aus dem Dialog)
@@ -273,11 +279,33 @@ class MainActivity : SimpleActivity() {
     }
 
     private var akkuGefragt = false
+    private var zugangLaeuft = false
+
+    /** Angemeldet (Schirm/Browser), aber noch kein SIP-Zugang: einmal holen. */
+    private fun zugangHolenFallsNoetig() {
+        if (zugangLaeuft || !org.fossify.phone.helpers.RosenwegAnmeldung.zugangFehlt(this)) return
+        zugangLaeuft = true
+        val app = applicationContext
+        Thread {
+            val meldung = try {
+                "Angemeldet mit deiner Nummer ${org.fossify.phone.helpers.RosenwegAnmeldung.zugangHolen(app)}"
+            } catch (e: org.fossify.phone.helpers.RosenwegAnmeldung.Fehler) {
+                e.message ?: "Anmeldung fehlgeschlagen"
+            } catch (e: Exception) {
+                "Keine Verbindung zum Rosenweg"
+            }
+            runOnUiThread {
+                zugangLaeuft = false
+                toast(meldung)
+                refreshMenuItems()
+            }
+        }.start()
+    }
 
     private fun rosenwegAnmelden() {
         val nummer = org.fossify.phone.helpers.PersoenlichesKonto.privatNummer(this)
         if (nummer == null) {
-            org.fossify.phone.helpers.RosenwegAnmeldung.starten(this)
+            startActivity(Intent(this, ch.rosenweg4303.cloud.RosenwegAnmeldeSchirm::class.java))
             return
         }
         org.fossify.commons.dialogs.ConfirmationDialog(this, message = "Rosenweg Telefon abmelden? Deine Nummer $nummer klingelt dann nicht mehr auf diesem Handy.") {
