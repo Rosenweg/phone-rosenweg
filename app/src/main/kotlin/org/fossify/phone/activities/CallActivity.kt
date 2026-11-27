@@ -164,9 +164,11 @@ class CallActivity : SimpleActivity() {
         }
 
         callAdd.setOnClickListener {
-            Intent(applicationContext, DialpadActivity::class.java).apply {
-                addFlags(Intent.FLAG_ACTIVITY_NO_HISTORY)
-                startActivity(this)
+            erstEntsperren {
+                Intent(applicationContext, DialpadActivity::class.java).apply {
+                    addFlags(Intent.FLAG_ACTIVITY_NO_HISTORY)
+                    startActivity(this)
+                }
             }
         }
 
@@ -179,7 +181,7 @@ class CallActivity : SimpleActivity() {
         }
 
         callManage.setOnClickListener {
-            startActivity(Intent(this@CallActivity, ConferenceActivity::class.java))
+            erstEntsperren { startActivity(Intent(this@CallActivity, ConferenceActivity::class.java)) }
         }
 
         callEnd.setOnClickListener {
@@ -836,16 +838,15 @@ class CallActivity : SimpleActivity() {
             window.addFlags(
                 WindowManager.LayoutParams.FLAG_SHOW_WHEN_LOCKED
                     or WindowManager.LayoutParams.FLAG_TURN_SCREEN_ON
-                    or WindowManager.LayoutParams.FLAG_DISMISS_KEYGUARD
                     or WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON
             )
         }
 
-        if (isOreoPlus()) {
-            (getSystemService(Context.KEYGUARD_SERVICE) as KeyguardManager).requestDismissKeyguard(this, null)
-        } else {
-            window.addFlags(WindowManager.LayoutParams.FLAG_DISMISS_KEYGUARD)
-        }
+        // Rosenweg (27.11.2026): KEIN requestDismissKeyguard beim Start. Bei gesichertem
+        // Sperrbildschirm (PIN) legte Android sonst sofort die PIN-Abfrage ueber den Anrufschirm,
+        // man musste zum Annehmen erst entsperren. Wie bei normalen Telefonen: Annehmen, Ablehnen,
+        // Auflegen, Stumm, Lautsprecher, Tastenfeld und Halten gehen ueber dem Sperrbildschirm;
+        // erst was den Anrufschirm verlaesst (Anruf hinzufuegen, Konferenz) fragt nach dem Entsperren.
 
         try {
             val powerManager = getSystemService(Context.POWER_SERVICE) as PowerManager
@@ -853,6 +854,21 @@ class CallActivity : SimpleActivity() {
             screenOnWakeLock!!.acquire(5 * 1000L)
         } catch (e: Exception) {
         }
+    }
+
+    /** Rosenweg: erst entsperren (PIN-Abfrage), dann [weiter]; ohne Sperre gleich. */
+    @SuppressLint("NewApi")
+    private fun erstEntsperren(weiter: () -> Unit) {
+        val km = getSystemService(Context.KEYGUARD_SERVICE) as KeyguardManager
+        if (!km.isKeyguardLocked || !isOreoPlus()) {
+            weiter()
+            return
+        }
+        km.requestDismissKeyguard(this, object : KeyguardManager.KeyguardDismissCallback() {
+            override fun onDismissSucceeded() {
+                weiter()
+            }
+        })
     }
 
     private fun enableProximitySensor() {
