@@ -163,14 +163,7 @@ class CallActivity : SimpleActivity() {
             toggleHold()
         }
 
-        callAdd.setOnClickListener {
-            erstEntsperren {
-                Intent(applicationContext, DialpadActivity::class.java).apply {
-                    addFlags(Intent.FLAG_ACTIVITY_NO_HISTORY)
-                    startActivity(this)
-                }
-            }
-        }
+        callAdd.setOnClickListener { erstEntsperren(::anrufHinzufuegen) }
 
         callSwap.setOnClickListener {
             CallManager.swap()
@@ -853,6 +846,13 @@ class CallActivity : SimpleActivity() {
             screenOnWakeLock = powerManager.newWakeLock(PowerManager.FULL_WAKE_LOCK, "org.fossify.phone:full_wake_lock")
             screenOnWakeLock!!.acquire(5 * 1000L)
         } catch (e: Exception) {
+        }
+    }
+
+    private fun anrufHinzufuegen() {
+        Intent(applicationContext, DialpadActivity::class.java).apply {
+            addFlags(Intent.FLAG_ACTIVITY_NO_HISTORY)
+            startActivity(this)
         }
     }
 
