@@ -1,7 +1,6 @@
 package org.fossify.phone.activities
 
 import android.annotation.SuppressLint
-import android.app.KeyguardManager
 import android.content.Context
 import android.content.Intent
 import android.os.Bundle
@@ -304,7 +303,9 @@ class EigenerAnrufActivity : SimpleActivity() {
                     android.view.WindowManager.LayoutParams.FLAG_TURN_SCREEN_ON
             )
         }
-        (getSystemService(Context.KEYGUARD_SERVICE) as KeyguardManager).requestDismissKeyguard(this, null)
+        // Rosenweg (27.11.2026): bewusst KEIN requestDismissKeyguard - das legte bei PIN-Sperre sofort
+        // die PIN-Abfrage ueber den Anruf. Annehmen/Ablehnen und alles im Gespraech geht ueber dem
+        // Sperrbildschirm, wie bei der Telefon-App des Handys.
     }
 
     private fun naeheAn() {

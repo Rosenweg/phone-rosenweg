@@ -501,8 +501,18 @@ object EigenerAnruf : Receiver.AnrufBeobachter {
             )
             b.setPriority(NotificationCompat.PRIORITY_MAX)
                 .setFullScreenIntent(oeffnen, true)
-                .addAction(R.drawable.ic_phone_down_vector, app.getString(R.string.decline_call), auflegen)
-                .addAction(R.drawable.ic_phone_vector, app.getString(R.string.accept_call), annehmen)
+            // Rosenweg (27.11.2026): Anruf-Stil des Systems (grosse Annehmen-/Ablehnen-Knoepfe im
+            // Banner und auf dem Sperrbildschirm). Android verlangt dafuer ein erlaubtes Vollbild-Recht
+            // (sonst wuerde die Benachrichtigung verworfen) - ohne Recht die bisherigen Knoepfe.
+            val vollbild = Build.VERSION.SDK_INT < 34 ||
+                app.getSystemService(NotificationManager::class.java)?.canUseFullScreenIntent() == true
+            if (vollbild) {
+                val anrufer = androidx.core.app.Person.Builder().setName(anzeige()).setImportant(true).build()
+                b.setStyle(NotificationCompat.CallStyle.forIncomingCall(anrufer, auflegen, annehmen))
+            } else {
+                b.addAction(R.drawable.ic_phone_down_vector, app.getString(R.string.decline_call), auflegen)
+                    .addAction(R.drawable.ic_phone_vector, app.getString(R.string.accept_call), annehmen)
+            }
         } else {
             b.setPriority(NotificationCompat.PRIORITY_LOW)
                 .addAction(R.drawable.ic_phone_down_vector, app.getString(R.string.end_call), auflegen)
