@@ -6,7 +6,6 @@ import android.telecom.Call
 import org.fossify.commons.extensions.formatPhoneNumber
 import org.fossify.commons.extensions.getMyContactsCursor
 import org.fossify.commons.extensions.getPhoneNumberTypeText
-import org.fossify.commons.helpers.ContactsHelper
 import org.fossify.commons.helpers.MyContactsContentProvider
 import org.fossify.commons.helpers.ensureBackgroundThread
 import org.fossify.phone.R
@@ -37,8 +36,12 @@ fun getCallContact(context: Context, call: Call?, callback: (CallContact) -> Uni
         val uri = Uri.decode(handle)
         if (uri.startsWith("tel:")) {
             val number = uri.substringAfter("tel:")
-            ContactsHelper(context).getContacts(getAll = true, showOnlyContactsWithNumbers = true) { contacts ->
-                val privateContacts = MyContactsContentProvider.getContacts(context, privateCursor)
+            NurNextcloud.kontakte(context, getAll = true) { contacts ->
+                val privateContacts = if (NurNextcloud.aktiv(context)) {
+                    ArrayList()
+                } else {
+                    MyContactsContentProvider.getContacts(context, privateCursor)
+                }
                 if (privateContacts.isNotEmpty()) {
                     contacts.addAll(privateContacts)
                 }

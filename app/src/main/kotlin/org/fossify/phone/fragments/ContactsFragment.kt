@@ -14,10 +14,9 @@ import org.fossify.commons.extensions.getMyContactsCursor
 import org.fossify.commons.extensions.hasPermission
 import org.fossify.commons.extensions.normalizeString
 import org.fossify.commons.extensions.underlineText
-import org.fossify.commons.helpers.ContactsHelper
 import org.fossify.commons.helpers.MyContactsContentProvider
 import org.fossify.commons.helpers.PERMISSION_READ_CONTACTS
-import org.fossify.commons.helpers.SMT_PRIVATE
+import org.fossify.commons.helpers.ensureBackgroundThread
 import org.fossify.commons.helpers.getProperText
 import org.fossify.commons.models.contacts.Contact
 import org.fossify.phone.R
@@ -30,6 +29,7 @@ import org.fossify.phone.extensions.handleGenericContactClick
 import org.fossify.phone.extensions.launchCreateNewContactIntent
 import org.fossify.phone.extensions.setupWithContacts
 import org.fossify.phone.extensions.startContactDetailsIntent
+import org.fossify.phone.helpers.NurNextcloud
 import org.fossify.phone.interfaces.RefreshItemsListener
 
 class ContactsFragment(context: Context, attributeSet: AttributeSet) : MyViewPagerFragment<MyViewPagerFragment.LettersInnerBinding>(context, attributeSet),
@@ -87,10 +87,10 @@ class ContactsFragment(context: Context, attributeSet: AttributeSet) : MyViewPag
 
     override fun refreshItems(invalidate: Boolean, callback: (() -> Unit)?) {
         val privateCursor = context?.getMyContactsCursor(favoritesOnly = false, withPhoneNumbersOnly = true)
-        ContactsHelper(context).getContacts(showOnlyContactsWithNumbers = true) { contacts ->
+        NurNextcloud.kontakte(context) { contacts ->
             allContacts = contacts
 
-            if (SMT_PRIVATE !in context.baseConfig.ignoredContactSources) {
+            if (NurNextcloud.lokaleZeigen(context, context.baseConfig.ignoredContactSources)) {
                 val privateContacts = MyContactsContentProvider.getContacts(context, privateCursor)
                 if (privateContacts.isNotEmpty()) {
                     allContacts.addAll(privateContacts)
@@ -114,6 +114,7 @@ class ContactsFragment(context: Context, attributeSet: AttributeSet) : MyViewPag
                 fragmentPlaceholder2.beVisible()
                 fragmentList.beGone()
             }
+            leerPrivatErklaeren()
         } else {
             binding.apply {
                 fragmentPlaceholder.beGone()
@@ -142,6 +143,25 @@ class ContactsFragment(context: Context, attributeSet: AttributeSet) : MyViewPag
                 }
             } else {
                 (binding.fragmentList.adapter as ContactsAdapter).updateItems(contacts)
+            }
+        }
+    }
+
+    /**
+     * Rosenweg: privates Handy - leere Liste erklaeren (nur Nextcloud-Kontakte; fehlt Rosenweg
+     * Kontakte oder die Anmeldung dort?) und den passenden Knopf anbieten.
+     */
+    private fun leerPrivatErklaeren() {
+        if (!NurNextcloud.aktiv(context) || !context.hasPermission(PERMISSION_READ_CONTACTS)) return
+        ensureBackgroundThread {
+            val z = NurNextcloud.zustand(context)
+            activity?.runOnUiThread {
+                binding.fragmentPlaceholder.text = NurNextcloud.leerText(z)
+                binding.fragmentPlaceholder2.apply {
+                    text = NurNextcloud.leerKnopf(z)
+                    underlineText()
+                    setOnClickListener { activity?.let { NurNextcloud.leerAktion(it, z) } }
+                }
             }
         }
     }
@@ -187,7 +207,7 @@ class ContactsFragment(context: Context, attributeSet: AttributeSet) : MyViewPag
             if (it) {
                 binding.fragmentPlaceholder.text = context.getString(R.string.no_contacts_found)
                 binding.fragmentPlaceholder2.text = context.getString(R.string.create_new_contact)
-                ContactsHelper(context).getContacts(showOnlyContactsWithNumbers = true) { contacts ->
+                NurNextcloud.kontakte(context) { contacts ->
                     activity?.runOnUiThread {
                         gotContacts(contacts)
                     }

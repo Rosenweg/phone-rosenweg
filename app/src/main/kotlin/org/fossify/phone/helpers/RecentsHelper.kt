@@ -41,10 +41,9 @@ class RecentsHelper(private val context: Context) {
         // Rosenweg: privates Handy - nur die eigene Liste der Rosenweg-Anrufe, das Anrufprotokoll
         // des Handys bleibt unberuehrt (kein READ_CALL_LOG)
         if (Betriebsart.privat(context)) {
-            ContactsHelper(context).getContacts(getAll = true, showOnlyContactsWithNumbers = true) { contacts ->
+            // Namen nur aus der Nextcloud, nicht aus dem Telefonbuch des Handys
+            NurNextcloud.kontakte(context, getAll = true) { contacts ->
                 ensureBackgroundThread {
-                    val privateContacts = MyContactsContentProvider.getContacts(context, privateCursor)
-                    if (privateContacts.isNotEmpty()) contacts.addAll(privateContacts)
                     val blocked = context.getBlockedNumbersSafe()
                     // eigene Liste (Anrufe ueber dieses Handy) + Verlauf der Anlage (alle Anrufe an
                     // die persoenliche Nummer), doppelte gelten einmal (der lokale Eintrag)

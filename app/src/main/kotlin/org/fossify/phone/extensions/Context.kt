@@ -94,6 +94,7 @@ fun Activity.startAddContactIntent(phoneNumber: String) {
         action = Intent.ACTION_INSERT_OR_EDIT
         type = "vnd.android.cursor.item/contact"
         putExtra(KEY_PHONE, phoneNumber)
+        org.fossify.phone.helpers.NurNextcloud.nachRosenwegKontakte(this@startAddContactIntent, this)
         launchActivityIntent(this)
     }
 }

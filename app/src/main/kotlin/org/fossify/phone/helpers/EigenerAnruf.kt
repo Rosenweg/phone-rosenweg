@@ -26,7 +26,6 @@ import android.telephony.TelephonyManager
 import android.util.Log
 import androidx.core.app.NotificationCompat
 import org.fossify.commons.extensions.toast
-import org.fossify.commons.helpers.ContactsHelper
 import org.fossify.commons.helpers.ensureBackgroundThread
 import org.fossify.phone.R
 import org.fossify.phone.activities.EigenerAnrufActivity
@@ -606,9 +605,10 @@ object EigenerAnruf : Receiver.AnrufBeobachter {
         val n = nummer
         if (n.isEmpty()) return
         try {
-            ContactsHelper(app).getContacts(getAll = true, showOnlyContactsWithNumbers = true) { kontakte ->
-                val k = kontakte.firstOrNull { it.doesHavePhoneNumber(n) } ?: return@getContacts
-                if (nummer != n) return@getContacts
+            // Rosenweg: privat nur Nextcloud-Kontakte (nicht das Telefonbuch des Handys)
+            NurNextcloud.kontakte(app, getAll = true) { kontakte ->
+                val k = kontakte.firstOrNull { it.doesHavePhoneNumber(n) } ?: return@kontakte
+                if (nummer != n) return@kontakte
                 name = k.getNameToDisplay()
                 fotoUri = k.photoUri
                 haupt.post { zeigen() }

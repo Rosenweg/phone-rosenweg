@@ -36,7 +36,6 @@ import org.fossify.commons.extensions.performHapticFeedback
 import org.fossify.commons.extensions.updateTextColors
 import org.fossify.commons.extensions.value
 import org.fossify.commons.extensions.viewBinding
-import org.fossify.commons.helpers.ContactsHelper
 import org.fossify.commons.helpers.KeypadHelper
 import org.fossify.commons.helpers.LOWER_ALPHA_INT
 import org.fossify.commons.helpers.MyContactsContentProvider
@@ -199,7 +198,7 @@ class DialpadActivity : SimpleActivity() {
             dialpadInput.disableKeyboard()
         }
 
-        ContactsHelper(this).getContacts(showOnlyContactsWithNumbers = true) { allContacts ->
+        org.fossify.phone.helpers.NurNextcloud.kontakte(this) { allContacts ->
             gotContacts(allContacts)
         }
 
@@ -279,7 +278,12 @@ class DialpadActivity : SimpleActivity() {
     private fun gotContacts(newContacts: ArrayList<Contact>) {
         allContacts = newContacts
 
-        val privateContacts = MyContactsContentProvider.getContacts(this, privateCursor)
+        // Rosenweg: privates Handy - keine lokalen Kontakte (nur Nextcloud)
+        val privateContacts = if (org.fossify.phone.helpers.NurNextcloud.aktiv(this)) {
+            ArrayList()
+        } else {
+            MyContactsContentProvider.getContacts(this, privateCursor)
+        }
         if (privateContacts.isNotEmpty()) {
             allContacts.addAll(privateContacts)
             allContacts.sort()

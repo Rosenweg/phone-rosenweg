@@ -25,11 +25,8 @@ fun SimpleActivity.handleGenericContactClick(contact: Contact) {
 }
 
 fun SimpleActivity.launchCreateNewContactIntent() {
-    Intent().apply {
-        action = Intent.ACTION_INSERT
-        data = ContactsContract.Contacts.CONTENT_URI
-        launchActivityIntent(this)
-    }
+    // Rosenweg: auf privaten Handys in Rosenweg Kontakte (speichert nur in die Nextcloud)
+    launchActivityIntent(org.fossify.phone.helpers.NurNextcloud.neuerKontakt(this))
 }
 
 // handle private contacts differently, only Simple Contacts Pro can open them
@@ -60,7 +57,17 @@ fun Activity.startContactDetailsIntent(contact: Contact) {
             val publicUri =
                 Uri.withAppendedPath(ContactsContract.Contacts.CONTENT_LOOKUP_URI, lookupKey)
             runOnUiThread {
-                launchViewContactIntent(publicUri)
+                if (org.fossify.phone.helpers.NurNextcloud.aktiv(this) &&
+                    org.fossify.phone.helpers.NurNextcloud.kontakteAppDa(this)
+                ) {
+                    // Rosenweg: privates Handy - Nextcloud-Kontakt in Rosenweg Kontakte zeigen
+                    Intent(ContactsContract.QuickContact.ACTION_QUICK_CONTACT, publicUri).apply {
+                        `package` = org.fossify.phone.helpers.NurNextcloud.KONTAKTE_APP
+                        launchActivityIntent(this)
+                    }
+                } else {
+                    launchViewContactIntent(publicUri)
+                }
             }
         }
     }

@@ -10,7 +10,6 @@ import org.fossify.commons.extensions.getMyContactsCursor
 import org.fossify.commons.extensions.hasPermission
 import org.fossify.commons.extensions.isVisible
 import org.fossify.commons.extensions.underlineText
-import org.fossify.commons.helpers.ContactsHelper
 import org.fossify.commons.helpers.MyContactsContentProvider
 import org.fossify.commons.helpers.PERMISSION_READ_CALL_LOG
 import org.fossify.commons.helpers.SMT_PRIVATE
@@ -57,7 +56,13 @@ class RecentsFragment(
             R.string.could_not_access_the_call_history
         }
 
-        binding.recentsPlaceholder.text = context.getString(placeholderResId)
+        binding.recentsPlaceholder.text = if (privat) {
+            // nur die Rosenweg-Anrufe dieser App - das Anrufprotokoll des Handys wird nicht gelesen
+            "Noch keine Rosenweg-Anrufe. Hier stehen nur Anrufe über Rosenweg Telefon – die " +
+                "Anrufliste des Handys bleibt in dessen Telefon-App."
+        } else {
+            context.getString(placeholderResId)
+        }
         binding.recentsPlaceholder2.apply {
             underlineText()
             setOnClickListener {
@@ -229,7 +234,7 @@ class RecentsFragment(
             return
         }
 
-        ContactsHelper(context).getContacts(showOnlyContactsWithNumbers = true) { contacts ->
+        org.fossify.phone.helpers.NurNextcloud.kontakte(context) { contacts ->
             ensureBackgroundThread {
                 val privateContacts = getPrivateContacts()
                 val updatedCalls = updateNamesIfEmpty(
@@ -246,6 +251,8 @@ class RecentsFragment(
     }
 
     private fun getPrivateContacts(): ArrayList<Contact> {
+        // Rosenweg: privates Handy - keine lokalen Kontakte (nur Nextcloud)
+        if (org.fossify.phone.helpers.NurNextcloud.aktiv(context)) return ArrayList()
         val privateCursor = context.getMyContactsCursor(favoritesOnly = false, withPhoneNumbersOnly = true)
         return MyContactsContentProvider.getContacts(context, privateCursor)
     }
