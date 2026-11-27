@@ -13,11 +13,11 @@ import org.fossify.commons.extensions.getColorStateList
 import org.fossify.commons.extensions.getContrastColor
 import org.fossify.commons.extensions.getMyContactsCursor
 import org.fossify.commons.extensions.hasPermission
-import org.fossify.commons.helpers.ContactsHelper
+import org.fossify.commons.extensions.underlineText
 import org.fossify.commons.helpers.Converters
 import org.fossify.commons.helpers.MyContactsContentProvider
 import org.fossify.commons.helpers.PERMISSION_READ_CONTACTS
-import org.fossify.commons.helpers.SMT_PRIVATE
+import org.fossify.commons.helpers.ensureBackgroundThread
 import org.fossify.commons.helpers.VIEW_TYPE_GRID
 import org.fossify.commons.models.contacts.Contact
 import org.fossify.commons.views.MyGridLayoutManager
@@ -31,6 +31,7 @@ import org.fossify.phone.extensions.config
 import org.fossify.phone.extensions.handleGenericContactClick
 import org.fossify.phone.extensions.setupWithContacts
 import org.fossify.phone.extensions.startContactDetailsIntent
+import org.fossify.phone.helpers.NurNextcloud
 import org.fossify.phone.interfaces.RefreshItemsListener
 
 class FavoritesFragment(context: Context, attributeSet: AttributeSet) : MyViewPagerFragment<MyViewPagerFragment.LettersInnerBinding>(context, attributeSet),
@@ -58,6 +59,7 @@ class FavoritesFragment(context: Context, attributeSet: AttributeSet) : MyViewPa
     override fun setupColors(textColor: Int, primaryColor: Int, properPrimaryColor: Int) {
         binding.apply {
             fragmentPlaceholder.setTextColor(textColor)
+            fragmentPlaceholder2.setTextColor(properPrimaryColor)
             (fragmentList.adapter as? MyRecyclerViewAdapter)?.updateTextColor(textColor)
 
             letterFastscroller.textColor = textColor.getColorStateList()
@@ -69,10 +71,10 @@ class FavoritesFragment(context: Context, attributeSet: AttributeSet) : MyViewPa
     }
 
     override fun refreshItems(invalidate: Boolean, callback: (() -> Unit)?) {
-        ContactsHelper(context).getContacts(showOnlyContactsWithNumbers = true) { contacts ->
+        NurNextcloud.kontakte(context) { contacts ->
             allContacts = contacts
 
-            if (SMT_PRIVATE !in context.baseConfig.ignoredContactSources) {
+            if (NurNextcloud.lokaleZeigen(context, context.baseConfig.ignoredContactSources)) {
                 val privateCursor = context?.getMyContactsCursor(favoritesOnly = true, withPhoneNumbersOnly = true)
                 val privateContacts = MyContactsContentProvider.getContacts(context, privateCursor).map {
                     it.copy(starred = 1)
@@ -103,11 +105,35 @@ class FavoritesFragment(context: Context, attributeSet: AttributeSet) : MyViewPa
             if (contacts.isEmpty()) {
                 fragmentPlaceholder.beVisible()
                 fragmentList.beGone()
+                leerPrivatErklaeren()
             } else {
                 fragmentPlaceholder.beGone()
+                fragmentPlaceholder2.beGone()
                 fragmentList.beVisible()
 
                 updateListAdapter()
+            }
+        }
+    }
+
+    /** Rosenweg: privates Handy - Favoriten kommen aus der Nextcloud (Stern in Rosenweg Kontakte). */
+    private fun leerPrivatErklaeren() {
+        if (!NurNextcloud.aktiv(context) || !context.hasPermission(PERMISSION_READ_CONTACTS)) return
+        ensureBackgroundThread {
+            val z = NurNextcloud.zustand(context)
+            activity?.runOnUiThread {
+                binding.fragmentPlaceholder.text = if (z == NurNextcloud.Zustand.VERBUNDEN) {
+                    "Noch keine Favoriten. Markiere Kontakte in Rosenweg Kontakte mit dem Stern, dann " +
+                        "erscheinen sie hier."
+                } else {
+                    NurNextcloud.leerText(z)
+                }
+                binding.fragmentPlaceholder2.apply {
+                    beVisibleIf(z != NurNextcloud.Zustand.VERBUNDEN)
+                    text = NurNextcloud.leerKnopf(z)
+                    underlineText()
+                    setOnClickListener { activity?.let { NurNextcloud.leerAktion(it, z) } }
+                }
             }
         }
     }

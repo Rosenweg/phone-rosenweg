@@ -7,7 +7,6 @@ import org.fossify.commons.extensions.getMyContactsCursor
 import org.fossify.commons.extensions.getPhoneNumberTypeText
 import org.fossify.commons.extensions.updateTextColors
 import org.fossify.commons.extensions.viewBinding
-import org.fossify.commons.helpers.ContactsHelper
 import org.fossify.commons.helpers.MyContactsContentProvider
 import org.fossify.commons.helpers.NavigationIcon
 import org.fossify.commons.models.PhoneNumber
@@ -39,12 +38,14 @@ class ManageSpeedDialActivity : SimpleActivity(), RemoveSpeedDialListener {
         speedDialValues = config.getSpeedDialValues()
         updateAdapter()
 
-        ContactsHelper(this).getContacts(showOnlyContactsWithNumbers = true) { contacts ->
+        org.fossify.phone.helpers.NurNextcloud.kontakte(this) { contacts ->
             allContacts.addAll(contacts)
 
-            val privateCursor = getMyContactsCursor(favoritesOnly = false, withPhoneNumbersOnly = true)
-            val privateContacts = MyContactsContentProvider.getContacts(this, privateCursor)
-            allContacts.addAll(privateContacts)
+            // Rosenweg: privates Handy - keine lokalen Kontakte (nur Nextcloud)
+            if (!org.fossify.phone.helpers.NurNextcloud.aktiv(this)) {
+                val privateCursor = getMyContactsCursor(favoritesOnly = false, withPhoneNumbersOnly = true)
+                allContacts.addAll(MyContactsContentProvider.getContacts(this, privateCursor))
+            }
             allContacts.sort()
         }
 

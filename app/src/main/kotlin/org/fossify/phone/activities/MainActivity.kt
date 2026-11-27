@@ -226,7 +226,9 @@ class MainActivity : SimpleActivity() {
         binding.mainMenu.requireToolbar().menu.apply {
             findItem(R.id.clear_call_history).isVisible = currentFragment == getRecentsFragment()
             findItem(R.id.sort).isVisible = currentFragment != getRecentsFragment()
-            findItem(R.id.filter).isVisible = currentFragment != getRecentsFragment()
+            // Rosenweg: privates Handy - nur Nextcloud-Kontakte, keine Quellen-Auswahl
+            findItem(R.id.filter).isVisible =
+                currentFragment != getRecentsFragment() && !Betriebsart.privat(this@MainActivity)
             findItem(R.id.create_new_contact).isVisible = currentFragment == getContactsFragment()
             findItem(R.id.change_view_type).isVisible = currentFragment == getFavoritesFragment()
             findItem(R.id.column_count).isVisible = currentFragment == getFavoritesFragment() && config.viewType == VIEW_TYPE_GRID
@@ -789,8 +791,8 @@ class MainActivity : SimpleActivity() {
 
     fun cacheContacts() {
         val privateCursor = getMyContactsCursor(favoritesOnly = false, withPhoneNumbersOnly = true)
-        ContactsHelper(this).getContacts(getAll = true, showOnlyContactsWithNumbers = true) { contacts ->
-            if (SMT_PRIVATE !in config.ignoredContactSources) {
+        org.fossify.phone.helpers.NurNextcloud.kontakte(this, getAll = true) { contacts ->
+            if (org.fossify.phone.helpers.NurNextcloud.lokaleZeigen(this, config.ignoredContactSources)) {
                 val privateContacts = MyContactsContentProvider.getContacts(this, privateCursor)
                 if (privateContacts.isNotEmpty()) {
                     contacts.addAll(privateContacts)
