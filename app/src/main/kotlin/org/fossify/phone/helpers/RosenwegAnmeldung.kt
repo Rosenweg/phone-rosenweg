@@ -10,88 +10,56 @@ import android.util.Log
 import org.json.JSONObject
 import java.net.HttpURLConnection
 import java.net.URL
-import java.net.URLEncoder
-import java.security.MessageDigest
-import java.security.SecureRandom
 
 /**
  * Rosenweg Telefon auf dem eigenen Handy (Stefan 25.11.2026): Anmeldung mit dem
  * Rosenweg-Konto statt SIP-Daten von Hand.
  *
- * 1. Browser mit der Authentik-Anmeldung (Anwendung "rosenweg-apps", oeffentlicher Client,
- *    PKCE S256), Ruecksprung ch.rosenweg4303.phone:/anmeldung -> AnmeldungActivity.
- * 2. Code gegen ein Access-Token tauschen (nur einmal gebraucht, wird nicht gespeichert).
- * 3. Mit dem Token bei der Anlage einen festen Zugang <nummer>-p<id> holen
- *    (POST /api/telefon/privat/anmelden) und wie ein persoenliches Konto registrieren.
- * Abmelden: POST /api/telefon/privat/abmelden mit dem Zugang selbst.
+ * Seit v47 (Stefan 26.11.2026): Die Anmeldung selbst kommt aus commons-rosenweg (cloud), mit
+ * dem gemeinsamen Anmeldeschirm aller Rosenweg-Apps. Er sieht aus wie der Sperrbildschirm der
+ * geteilten Telefone: Rosenweg-Karte hinten ans Telefon halten oder "Mit Rosenweg-Konto
+ * anmelden". Danach holt [zugangHolen] mit dem Zugang der Anmeldung (Authentik-Token oder
+ * Karten-Sitzung) bei der Anlage einen festen SIP-Zugang <nummer>-p<id>
+ * (POST /api/telefon/privat/anmelden) und richtet ihn wie ein persoenliches Konto ein.
+ * Abmelden: POST /api/telefon/privat/abmelden mit dem Zugang selbst, dazu die Anmeldung in
+ * commons.
  *
  * Auf geteilten Telefonen (Rosenweg Geraet) gibt es das nicht - dort kommt der Zugang
  * aus der Sitzung. Nie Token, Code oder Passwort loggen.
  */
 object RosenwegAnmeldung {
     private const val TAG = "RosenwegAnmeldung"
-    private const val AUTHENTIK = "https://authentik.rosenweg4303.ch/application/o"
-    private const val CLIENT_ID = "rosenweg-apps"
     private const val ANLAGE = "https://pbx.rosenweg4303.ch"
-    const val RUECKSPRUNG = "ch.rosenweg4303.phone:/anmeldung"
-
-    private const val PREFS = "rosenweg_anmeldung"
-    private const val P_VERIFIER = "verifier"
-    private const val P_STATE = "state"
-
-    private fun prefs(c: Context) = c.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
-
-    private fun zufall(bytes: Int): String {
-        val b = ByteArray(bytes).also { SecureRandom().nextBytes(it) }
-        return Base64.encodeToString(b, Base64.URL_SAFE or Base64.NO_WRAP or Base64.NO_PADDING)
-    }
-
-    private fun enc(s: String) = URLEncoder.encode(s, "UTF-8")
-
-    /** Schritt 1: Anmeldeseite im Browser oeffnen. */
-    fun starten(a: Activity) {
-        val verifier = zufall(48)
-        val state = zufall(24)
-        prefs(a).edit().putString(P_VERIFIER, verifier).putString(P_STATE, state).commit()
-        val challenge = Base64.encodeToString(
-            MessageDigest.getInstance("SHA-256").digest(verifier.toByteArray(Charsets.US_ASCII)),
-            Base64.URL_SAFE or Base64.NO_WRAP or Base64.NO_PADDING
-        )
-        val url = "$AUTHENTIK/authorize/?response_type=code&client_id=$CLIENT_ID" +
-            "&redirect_uri=${enc(RUECKSPRUNG)}&scope=${enc("openid email profile")}" +
-            "&state=$state&code_challenge=$challenge&code_challenge_method=S256"
-        a.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
-    }
 
     class Fehler(meldung: String) : Exception(meldung)
 
-    /** Schritt 2+3 (blockierend, nicht im UI-Thread). Gibt die persoenliche Nummer zurueck. */
-    fun abschliessen(c: Context, antwort: Uri): String {
-        val p = prefs(c)
-        val verifier = p.getString(P_VERIFIER, null)
-        val state = p.getString(P_STATE, null)
-        p.edit().clear().commit()   // nur einmal verwendbar
-        antwort.getQueryParameter("error")?.let { throw Fehler("Anmeldung abgebrochen") }
-        val code = antwort.getQueryParameter("code") ?: throw Fehler("Anmeldung abgebrochen")
-        if (verifier == null || state == null || antwort.getQueryParameter("state") != state) {
-            throw Fehler("Anmeldung abgelaufen, bitte nochmals")
-        }
-        val token = post(
-            "$AUTHENTIK/token/",
-            "application/x-www-form-urlencoded",
-            "grant_type=authorization_code&code=${enc(code)}&redirect_uri=${enc(RUECKSPRUNG)}" +
-                "&client_id=$CLIENT_ID&code_verifier=${enc(verifier)}",
-            null
-        ).let { (status, text) ->
-            if (status != 200) throw Fehler("Rosenweg-Anmeldung fehlgeschlagen ($status)")
-            JSONObject(text).optString("access_token").ifEmpty { throw Fehler("Rosenweg-Anmeldung fehlgeschlagen") }
-        }
+    /**
+     * Eigenes Handy ohne SIP-Zugang: muss der Anmeldeschirm (commons) kommen? Nicht, wenn ein
+     * Zugang von Hand eingerichtet ist.
+     */
+    fun anmeldungNoetig(c: Context): Boolean =
+        !PersoenlichesKonto.geraetDa(c) && PersoenlichesKonto.privatNummer(c) == null &&
+            !PersoenlichesKonto.manuellDa(c) && ch.rosenweg4303.cloud.RosenwegAnmeldung.anmeldungNoetig(c)
+
+    /** Angemeldet (commons), aber noch kein SIP-Zugang: jetzt holen. */
+    fun zugangFehlt(c: Context): Boolean =
+        !PersoenlichesKonto.geraetDa(c) && PersoenlichesKonto.privatNummer(c) == null &&
+            !PersoenlichesKonto.manuellDa(c) && ch.rosenweg4303.cloud.RosenwegAnmeldung.angemeldet(c)
+
+    /** SIP-Zugang bei der Anlage holen (blockierend, nicht im UI-Thread). Gibt die Nummer zurueck. */
+    fun zugangHolen(c: Context): String {
+        val token = try {
+            ch.rosenweg4303.cloud.RosenwegAnmeldung.zugangsToken(c)
+        } catch (e: java.io.IOException) {
+            throw Fehler("Keine Verbindung zum Rosenweg")
+        } ?: throw Fehler("Anmeldung abgelaufen, bitte neu anmelden")
         val geraet = listOf(Build.MANUFACTURER, Build.MODEL).filter { it.isNotBlank() }.distinct().joinToString(" ")
         val (status, text) = post(
             "$ANLAGE/api/telefon/privat/anmelden", "application/json",
             JSONObject().put("geraet", geraet).put("geraet_kennung", GeraetKennung.von(c)).toString(), token
         )
         val j = try { JSONObject(text) } catch (e: Exception) { JSONObject() }
+        if (status == 401) ch.rosenweg4303.cloud.RosenwegAnmeldung.zugangUngueltig()
         if (status != 200) throw Fehler(j.optString("error").ifEmpty { "Anlage nicht erreichbar ($status)" })
         PersoenlichesKonto.privatUebernehmen(c, j)
         Log.i(TAG, "angemeldet (eigenes Handy)")
@@ -132,6 +100,7 @@ object RosenwegAnmeldung {
             }
         }
         PersoenlichesKonto.privatVergessen(c)
+        ch.rosenweg4303.cloud.RosenwegAnmeldung.abmelden(c)   // Anmeldung dieser App (Browser oder Karte)
         // Grundregel: beim Abmelden die lokale Anrufliste (Rosenweg-Anrufe) loeschen
         EigeneAnrufliste.leeren(c)
         AnlageVerlauf.privatVergessen()

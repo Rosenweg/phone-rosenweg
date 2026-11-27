@@ -53,21 +53,8 @@
         android:roundIcon="@mipmap/ic_launcher"
         android:theme="@style/AppTheme">
 
-        <!-- Rosenweg: Ruecksprung der Anmeldung mit dem Rosenweg-Konto (eigenes Handy) -->
-        <activity
-            android:name=".activities.AnmeldungActivity"
-            android:exported="true"
-            android:launchMode="singleTask"
-            android:noHistory="true"
-            android:theme="@android:style/Theme.Translucent.NoTitleBar">
-            <intent-filter>
-                <action android:name="android.intent.action.VIEW" />
-                <category android:name="android.intent.category.DEFAULT" />
-                <category android:name="android.intent.category.BROWSABLE" />
-                <!-- Ruecksprung ch.rosenweg4303.phone:/anmeldung hat bewusst keinen Host (Authentik-Regex) -->
-                <data android:scheme="ch.rosenweg4303.phone" android:path="/anmeldung" tools:ignore="AppLinkUrlError" />
-            </intent-filter>
-        </activity>
+        <!-- Rosenweg: Anmeldeschirm und Ruecksprung der Browser-Anmeldung (ch.rosenweg4303.phone:/anmeldung)
+             kommen aus commons-rosenweg (cloud): RosenwegAnmeldeSchirm, RosenwegAnmeldungActivity -->
 
         <activity
             android:name=".activities.SplashActivity"
